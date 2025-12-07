@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "simplequarries",
+  "version": "${version}",
+  "name": "Simple Quarries",
+  "description": "A compact quarry block that mines a 5x5 shaft using fuel and a provided pickaxe.",
+  "authors": [
+    "Liam"
+  ],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.simplequarries.SimpleQuarries"
+    ],
+    "client": [
+      "com.simplequarries.client.SimpleQuarriesClient"
+    ]
+  },
+  "mixins": [],
+  "depends": {
+    "fabricloader": ">=0.18.0",
+    "fabric-api": ">=0.138.0",
+    "minecraft": "~1.21.10",
+    "java": ">=21"
+  }
+}

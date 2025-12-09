@@ -23,7 +23,7 @@ public class QuarryUpgradeRecipe extends SpecialCraftingRecipe {
         ItemStack quarryStack = ItemStack.EMPTY;
         int templateCount = 0;
 
-        for (int i = 0; i < inventory.size(); i++) {
+        for (int i = 0; i < inventory.getSize(); i++) {
             ItemStack stack = inventory.getStackInSlot(i);
             if (stack.isEmpty()) {
                 continue;
@@ -55,7 +55,7 @@ public class QuarryUpgradeRecipe extends SpecialCraftingRecipe {
     @Override
     public ItemStack craft(CraftingRecipeInput inventory, RegistryWrapper.WrapperLookup registries) {
         ItemStack quarryStack = ItemStack.EMPTY;
-        for (int i = 0; i < inventory.size(); i++) {
+        for (int i = 0; i < inventory.getSize(); i++) {
             ItemStack stack = inventory.getStackInSlot(i);
             if (!stack.isEmpty() && stack.isOf(SimpleQuarries.QUARRY_BLOCK_ITEM)) {
                 quarryStack = stack;
@@ -87,7 +87,12 @@ public class QuarryUpgradeRecipe extends SpecialCraftingRecipe {
     }
 
     @Override
-    public DefaultedList<ItemStack> getRecipeRemainders(CraftingRecipeInput input) {
-        return DefaultedList.ofSize(input.size(), ItemStack.EMPTY);
+    public DefaultedList<ItemStack> getRemainder(CraftingRecipeInput input) {
+        return DefaultedList.ofSize(input.getSize(), ItemStack.EMPTY);
+    }
+
+    @Override
+    public boolean fits(int width, int height) {
+        return width * height >= 2;
     }
 }

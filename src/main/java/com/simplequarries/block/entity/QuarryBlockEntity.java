@@ -490,7 +490,7 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
             if (!stack.isEmpty()) {
                 NbtCompound slotData = new NbtCompound();
                 slotData.putByte("Slot", (byte) i);
-                slotData.put("Item", stack.toNbt(registries));
+                slotData.put("Item", stack.encode(registries));
                 itemsList.add(slotData);
             }
         }

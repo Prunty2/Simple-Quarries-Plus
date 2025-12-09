@@ -19,6 +19,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroups;
 import net.minecraft.recipe.RecipeSerializer;
 import net.minecraft.recipe.SpecialCraftingRecipe;
+import net.minecraft.recipe.SpecialRecipeSerializer;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKey;
@@ -49,21 +50,20 @@ public class SimpleQuarries implements ModInitializer {
         RegistryKey<Block> quarryBlockKey = RegistryKey.of(RegistryKeys.BLOCK, quarryId);
         RegistryKey<Item> quarryItemKey = RegistryKey.of(RegistryKeys.ITEM, quarryId);
 
-        // Register the Quarry block with registry key in settings
+        // Register the Quarry block
         QUARRY_BLOCK = Registry.register(
                 Registries.BLOCK,
                 quarryBlockKey,
                 new QuarryBlock(AbstractBlock.Settings.create()
-                        .registryKey(quarryBlockKey)
                         .strength(4.0f)
                         .requiresTool())
         );
 
-        // Register the block item with registry key in settings
+        // Register the block item
         QUARRY_BLOCK_ITEM = Registry.register(
                 Registries.ITEM,
                 quarryItemKey,
-                new QuarryBlockItem(QUARRY_BLOCK, new Item.Settings().registryKey(quarryItemKey).useBlockPrefixedTranslationKey())
+                new QuarryBlockItem(QUARRY_BLOCK, new Item.Settings())
         );
 
         // Register the upgrade template item
@@ -72,7 +72,7 @@ public class SimpleQuarries implements ModInitializer {
         QUARRY_UPGRADE_TEMPLATE = Registry.register(
                 Registries.ITEM,
                 templateKey,
-                new QuarryUpgradeTemplateItem(new Item.Settings().registryKey(templateKey))
+                new QuarryUpgradeTemplateItem(new Item.Settings())
         );
 
         // Register the block entity type
@@ -92,7 +92,7 @@ public class SimpleQuarries implements ModInitializer {
         QUARRY_UPGRADE_RECIPE_SERIALIZER = Registry.register(
                 Registries.RECIPE_SERIALIZER,
                 Identifier.of(MOD_ID, "quarry_upgrade"),
-                new SpecialCraftingRecipe.SpecialRecipeSerializer<>(QuarryUpgradeRecipe::new)
+                new SpecialRecipeSerializer<>(QuarryUpgradeRecipe::new)
         );
 
         // Add to functional item group

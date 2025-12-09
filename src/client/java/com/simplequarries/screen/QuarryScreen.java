@@ -42,7 +42,7 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
         int y = (this.height - this.backgroundHeight) / 2;
 
         // Draw the furnace background as base
-        context.drawTexture(RenderLayer::getGuiTextured, FURNACE_TEXTURE, x, y, 0, 0, this.backgroundWidth, this.backgroundHeight, 256, 256);
+        context.drawTexture(FURNACE_TEXTURE, x, y, 0.0f, 0.0f, this.backgroundWidth, this.backgroundHeight, 256, 256);
 
         // Cover the furnace's default slots with background color, then draw our custom layout
         // Fill the area between arrow and output grid, and cover furnace slots
@@ -65,7 +65,7 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
         // Draw pickaxe slot with highlight (at 8, 17)
         int pickaxeSlotX = x + 7;
         int pickaxeSlotY = y + 16;
-        drawSlotHighlight(context, pickaxeSlotX, pickaxeSlotY, 0xFFAA7744); // Brown tint
+        drawSlotHighlightCustom(context, pickaxeSlotX, pickaxeSlotY, 0xFFAA7744); // Brown tint
         
         // Draw pickaxe icon hint if slot is empty
         if (!handler.hasPickaxe()) {
@@ -76,7 +76,7 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
         // Draw fuel slot with highlight (at 8, 53)
         int fuelSlotX = x + 7;
         int fuelSlotY = y + 52;
-        drawSlotHighlight(context, fuelSlotX, fuelSlotY, 0xFFDD6600); // Orange tint
+        drawSlotHighlightCustom(context, fuelSlotX, fuelSlotY, 0xFFDD6600); // Orange tint
         
         // Draw coal icon hint if slot is empty
         if (!handler.hasFuel()) {
@@ -89,18 +89,18 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
         int flameY = y + 36;
         if (handler.isBurning()) {
             int flame = handler.getScaledFuelProgress();
-            context.drawTexture(RenderLayer::getGuiTextured, FURNACE_TEXTURE, flameX, flameY + 12 - flame, 176, 12 - flame, 14, flame + 1, 256, 256);
+            context.drawTexture(FURNACE_TEXTURE, flameX, flameY + 12 - flame, 176.0f, (float)(12 - flame), 14, flame + 1, 256, 256);
         }
 
         // Draw progress arrow (pointing right toward output)
         int arrowX = x + 34;
         int arrowY = y + 34;
         // Draw empty arrow background
-        context.drawTexture(RenderLayer::getGuiTextured, FURNACE_TEXTURE, arrowX, arrowY, 79, 35, 24, 16, 256, 256);
+        context.drawTexture(FURNACE_TEXTURE, arrowX, arrowY, 79.0f, 35.0f, 24, 16, 256, 256);
         // Draw filled arrow progress
         int arrow = handler.getScaledMiningProgress();
         if (arrow > 0) {
-            context.drawTexture(RenderLayer::getGuiTextured, FURNACE_TEXTURE, arrowX, arrowY, 176, 14, arrow + 1, 16, 256, 256);
+            context.drawTexture(FURNACE_TEXTURE, arrowX, arrowY, 176.0f, 14.0f, arrow + 1, 16, 256, 256);
         }
     }
 
@@ -133,7 +133,7 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
     /**
      * Draw a highlighted slot background with colored border
      */
-    private void drawSlotHighlight(DrawContext context, int x, int y, int borderColor) {
+    private void drawSlotHighlightCustom(DrawContext context, int x, int y, int borderColor) {
         // Draw colored border
         context.fill(x, y, x + 18, y + 2, borderColor);      // Top
         context.fill(x, y, x + 2, y + 18, borderColor);      // Left

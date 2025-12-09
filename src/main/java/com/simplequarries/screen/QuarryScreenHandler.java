@@ -100,10 +100,11 @@ public class QuarryScreenHandler extends ScreenHandler {
      * Get the block entity from the world on the client side
      */
     private static QuarryBlockEntity getBlockEntity(PlayerInventory playerInventory, BlockPos pos) {
-        if (playerInventory.player.getEntityWorld().getBlockEntity(pos) instanceof QuarryBlockEntity quarry) {
+        if (playerInventory.player.getWorld() != null && playerInventory.player.getWorld().getBlockEntity(pos) instanceof QuarryBlockEntity quarry) {
             return quarry;
         }
-        throw new IllegalStateException("Quarry block entity not found at " + pos);
+        // Fallback: create a dummy entity for client-side rendering
+        return new QuarryBlockEntity(pos, null);
     }
 
     // Number of quarry slots in this screen (pickaxe + fuel + 24 output)

@@ -118,8 +118,11 @@ public class QuarryBlock extends BlockWithEntity {
     }
 
     @Override
-    protected int getComparatorOutput(BlockState state, World world, BlockPos pos, Direction direction) {
+    protected int getComparatorOutput(BlockState state, World world, BlockPos pos) {
         BlockEntity blockEntity = world.getBlockEntity(pos);
-        return blockEntity instanceof QuarryBlockEntity quarry ? ScreenHandler.calculateComparatorOutput((Inventory) quarry) : 0;
+        if (blockEntity instanceof Inventory inventory) {
+            return ScreenHandler.calculateComparatorOutput(inventory);
+        }
+        return 0;
     }
 }

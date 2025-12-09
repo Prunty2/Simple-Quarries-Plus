@@ -64,7 +64,6 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
     private static final Set<Item> VALID_PICKAXES = Set.of(
             Items.WOODEN_PICKAXE,
             Items.STONE_PICKAXE,
-            Items.COPPER_PICKAXE,
             Items.IRON_PICKAXE,
             Items.GOLDEN_PICKAXE,
             Items.DIAMOND_PICKAXE,
@@ -454,7 +453,6 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         int baseTicks = 0;
         if (item == Items.WOODEN_PICKAXE) baseTicks = 200;
         else if (item == Items.STONE_PICKAXE) baseTicks = 160;
-        else if (item == Items.COPPER_PICKAXE) baseTicks = 140;
         else if (item == Items.IRON_PICKAXE) baseTicks = 120;
         else if (item == Items.GOLDEN_PICKAXE) baseTicks = 20;
         else if (item == Items.DIAMOND_PICKAXE) baseTicks = 80;

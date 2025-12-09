@@ -6,11 +6,8 @@ import net.minecraft.block.Block;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
 import net.minecraft.component.type.TooltipDisplayComponent;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.NbtComponent;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.nbt.NbtCompound;
 import net.minecraft.text.Text;
 
 import java.util.function.Consumer;
@@ -22,19 +19,7 @@ public class QuarryBlockItem extends BlockItem {
 
     public static int getUpgradeCount(ItemStack stack) {
         int fromComponent = stack.getOrDefault(QuarryComponents.UPGRADE_COUNT, 0);
-        if (fromComponent > 0) {
-            return QuarryUpgrades.clampUpgradeCount(fromComponent);
-        }
-        // Fallback for stacks that only carry BlockEntityTag (e.g., drops)
-        var blockEntityData = stack.get(DataComponentTypes.BLOCK_ENTITY_DATA);
-        if (blockEntityData != null) {
-            NbtCompound nbt = blockEntityData.copyNbtWithoutId();
-            int fromTag = nbt.getInt("UpgradeCount").orElse(0);
-            if (fromTag > 0) {
-                return QuarryUpgrades.clampUpgradeCount(fromTag);
-            }
-        }
-        return 0;
+        return QuarryUpgrades.clampUpgradeCount(fromComponent);
     }
 
     public static void setUpgradeCount(ItemStack stack, int count) {

@@ -5,12 +5,11 @@ import com.simplequarries.component.QuarryComponents;
 import net.minecraft.block.Block;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
-import net.minecraft.component.type.TooltipDisplayComponent;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.text.Text;
 
-import java.util.function.Consumer;
+import java.util.List;
 
 public class QuarryBlockItem extends BlockItem {
     public QuarryBlockItem(Block block, Settings settings) {
@@ -32,14 +31,14 @@ public class QuarryBlockItem extends BlockItem {
     }
 
     @Override
-    public void appendTooltip(ItemStack stack, Item.TooltipContext context, TooltipDisplayComponent display, Consumer<Text> textConsumer, TooltipType type) {
-        super.appendTooltip(stack, context, display, textConsumer, type);
+    public void appendTooltip(ItemStack stack, Item.TooltipContext context, List<Text> tooltip, TooltipType type) {
+        super.appendTooltip(stack, context, tooltip, type);
         int area = getMiningArea(stack);
         boolean atMax = area >= QuarryUpgrades.MAX_AREA;
         if (atMax) {
-            textConsumer.accept(Text.translatable("tooltip.simplequarries.quarry.area_max", area, area));
+            tooltip.add(Text.translatable("tooltip.simplequarries.quarry.area_max", area, area));
         } else {
-            textConsumer.accept(Text.translatable("tooltip.simplequarries.quarry.area", area, area));
+            tooltip.add(Text.translatable("tooltip.simplequarries.quarry.area", area, area));
         }
     }
 }

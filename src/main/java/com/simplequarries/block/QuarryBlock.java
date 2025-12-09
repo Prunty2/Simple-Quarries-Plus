@@ -78,8 +78,9 @@ public class QuarryBlock extends BlockWithEntity {
     }
 
     @Override
-    protected void onStateReplaced(BlockState state, ServerWorld world, BlockPos pos, boolean moved) {
-        if (!state.isOf(world.getBlockState(pos).getBlock())) {
+    @Deprecated
+    protected void onStateReplaced(BlockState state, World world, BlockPos pos, BlockState newState, boolean moved) {
+        if (!state.isOf(newState.getBlock())) {
             BlockEntity blockEntity = world.getBlockEntity(pos);
             if (blockEntity instanceof QuarryBlockEntity quarry) {
                 ItemScatterer.spawn(world, pos, quarry);
@@ -87,7 +88,7 @@ public class QuarryBlock extends BlockWithEntity {
             }
         }
 
-        super.onStateReplaced(state, world, pos, moved);
+        super.onStateReplaced(state, world, pos, newState, moved);
     }
 
     @Override

@@ -23,6 +23,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.registry.entry.RegistryEntry;
@@ -513,23 +514,25 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
             items.set(i, ItemStack.EMPTY);
         }
 
-        nbt.getList("Items").ifPresent(itemsList -> {
-            for (int i = 0; i < itemsList.size(); i++) {
-                itemsList.getCompound(i).ifPresent(slotData -> {
-                    int slot = slotData.getByte("Slot", (byte) 0) & 255;
-                    if (slot < items.size() && slotData.contains("Item")) {
-                        ItemStack.fromNbt(registries, slotData.get("Item")).ifPresent(stack -> items.set(slot, stack));
-                    }
-                });
+        NbtList itemsList = nbt.getList("Items", 10);
+        for (int i = 0; i < itemsList.size(); i++) {
+            NbtCompound slotData = itemsList.getCompound(i);
+            int slot = slotData.getByte("Slot") & 255;
+            if (slot < items.size() && slotData.contains("Item")) {
+                NbtCompound itemNbt = slotData.getCompound("Item");
+                ItemStack stack = (ItemStack) ItemStack.CODEC.parse(registries.getOps(NbtOps.INSTANCE), itemNbt)
+                    .resultOrPartial(error -> {})
+                    .orElse(ItemStack.EMPTY);
+                items.set(slot, stack);
             }
-        });
+        }
 
-        burnTime = nbt.getInt("BurnTime", 0);
-        lastFuelTime = nbt.getInt("LastFuelTime", 0);
-        miningProgress = nbt.getInt("MiningProgress", 0);
-        ticksPerBlock = nbt.getInt("TicksPerBlock", 0);
-        currentDepth = Math.max(1, nbt.getInt("Depth", 1));
-        upgradeCount = QuarryUpgrades.clampUpgradeCount(nbt.getInt("UpgradeCount", 0));
+        burnTime = nbt.contains("BurnTime") ? nbt.getInt("BurnTime") : 0;
+        lastFuelTime = nbt.contains("LastFuelTime") ? nbt.getInt("LastFuelTime") : 0;
+        miningProgress = nbt.contains("MiningProgress") ? nbt.getInt("MiningProgress") : 0;
+        ticksPerBlock = nbt.contains("TicksPerBlock") ? nbt.getInt("TicksPerBlock") : 0;
+        currentDepth = Math.max(1, nbt.contains("Depth") ? nbt.getInt("Depth") : 1);
+        upgradeCount = QuarryUpgrades.clampUpgradeCount(nbt.contains("UpgradeCount") ? nbt.getInt("UpgradeCount") : 0);
         clampAreaIndex();
     }
 

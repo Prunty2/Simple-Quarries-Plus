@@ -1,8 +1,8 @@
 package com.simplequarries.screen;
 
-import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.Items;
 import net.minecraft.text.Text;
@@ -42,7 +42,7 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
         int y = (this.height - this.backgroundHeight) / 2;
 
         // Draw the furnace background as base
-        context.drawTexture(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE, x, y, 0.0f, 0.0f, this.backgroundWidth, this.backgroundHeight, 256, 256);
+        context.drawTexture(RenderLayer::getGuiTextured, FURNACE_TEXTURE, x, y, 0, 0, this.backgroundWidth, this.backgroundHeight, 256, 256);
 
         // Cover the furnace's default slots with background color, then draw our custom layout
         // Fill the area between arrow and output grid, and cover furnace slots
@@ -89,18 +89,18 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
         int flameY = y + 36;
         if (handler.isBurning()) {
             int flame = handler.getScaledFuelProgress();
-            context.drawTexture(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE, flameX, flameY + 12 - flame, 176.0f, (float)(12 - flame), 14, flame + 1, 256, 256);
+            context.drawTexture(RenderLayer::getGuiTextured, FURNACE_TEXTURE, flameX, flameY + 12 - flame, 176, 12 - flame, 14, flame + 1, 256, 256);
         }
 
         // Draw progress arrow (pointing right toward output)
         int arrowX = x + 34;
         int arrowY = y + 34;
         // Draw empty arrow background
-        context.drawTexture(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE, arrowX, arrowY, 79.0f, 35.0f, 24, 16, 256, 256);
+        context.drawTexture(RenderLayer::getGuiTextured, FURNACE_TEXTURE, arrowX, arrowY, 79, 35, 24, 16, 256, 256);
         // Draw filled arrow progress
         int arrow = handler.getScaledMiningProgress();
         if (arrow > 0) {
-            context.drawTexture(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE, arrowX, arrowY, 176.0f, 14.0f, arrow + 1, 16, 256, 256);
+            context.drawTexture(RenderLayer::getGuiTextured, FURNACE_TEXTURE, arrowX, arrowY, 176, 14, arrow + 1, 16, 256, 256);
         }
     }
 

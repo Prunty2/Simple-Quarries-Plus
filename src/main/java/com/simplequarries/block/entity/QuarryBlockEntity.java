@@ -21,9 +21,10 @@ import net.minecraft.screen.PropertyDelegate;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.storage.ReadView;
-import net.minecraft.storage.WriteView;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtList;
 import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.text.Text;
 import net.minecraft.util.collection.DefaultedList;
@@ -478,48 +479,57 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
     // ==================== NBT Serialization ====================
 
     @Override
-    protected void writeData(WriteView data) {
-        // Save inventory using a sub-view for items
-        WriteView.ListView itemsList = data.getList("Items");
+    protected void writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
+        super.writeNbt(nbt, registries);
+
+        // Save inventory
+        NbtList itemsList = new NbtList();
         for (int i = 0; i < items.size(); i++) {
             ItemStack stack = items.get(i);
             if (!stack.isEmpty()) {
-                WriteView slotData = itemsList.add();
+                NbtCompound slotData = new NbtCompound();
                 slotData.putByte("Slot", (byte) i);
-                slotData.put("Item", ItemStack.CODEC, stack);
+                slotData.put("Item", stack.toNbt(registries));
+                itemsList.add(slotData);
             }
         }
-        
-        data.putInt("BurnTime", burnTime);
-        data.putInt("LastFuelTime", lastFuelTime);
-        data.putInt("MiningProgress", miningProgress);
-        data.putInt("TicksPerBlock", ticksPerBlock);
-        data.putInt("Depth", currentDepth);
-        data.putInt("AreaIndex", areaIndex);
-        data.putInt("UpgradeCount", upgradeCount);
+        nbt.put("Items", itemsList);
+
+        nbt.putInt("BurnTime", burnTime);
+        nbt.putInt("LastFuelTime", lastFuelTime);
+        nbt.putInt("MiningProgress", miningProgress);
+        nbt.putInt("TicksPerBlock", ticksPerBlock);
+        nbt.putInt("Depth", currentDepth);
+        nbt.putInt("AreaIndex", areaIndex);
+        nbt.putInt("UpgradeCount", upgradeCount);
     }
 
     @Override
-    protected void readData(ReadView data) {
+    protected void readNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registries) {
+        super.readNbt(nbt, registries);
+
         // Load inventory
         for (int i = 0; i < items.size(); i++) {
             items.set(i, ItemStack.EMPTY);
         }
-        
-        ReadView.ListReadView itemsList = data.getListReadView("Items");
-        for (ReadView slotData : itemsList) {
-            int slot = slotData.getByte("Slot", (byte) 0) & 255;
-            if (slot < items.size()) {
-                slotData.read("Item", ItemStack.CODEC).ifPresent(stack -> items.set(slot, stack));
+
+        nbt.getList("Items").ifPresent(itemsList -> {
+            for (int i = 0; i < itemsList.size(); i++) {
+                itemsList.getCompound(i).ifPresent(slotData -> {
+                    int slot = slotData.getByte("Slot", (byte) 0) & 255;
+                    if (slot < items.size() && slotData.contains("Item")) {
+                        ItemStack.fromNbt(registries, slotData.get("Item")).ifPresent(stack -> items.set(slot, stack));
+                    }
+                });
             }
-        }
-        
-        burnTime = data.getInt("BurnTime", 0);
-        lastFuelTime = data.getInt("LastFuelTime", 0);
-        miningProgress = data.getInt("MiningProgress", 0);
-        ticksPerBlock = data.getInt("TicksPerBlock", 0);
-        currentDepth = Math.max(1, data.getInt("Depth", 1));
-        upgradeCount = QuarryUpgrades.clampUpgradeCount(data.getInt("UpgradeCount", 0));
+        });
+
+        burnTime = nbt.getInt("BurnTime", 0);
+        lastFuelTime = nbt.getInt("LastFuelTime", 0);
+        miningProgress = nbt.getInt("MiningProgress", 0);
+        ticksPerBlock = nbt.getInt("TicksPerBlock", 0);
+        currentDepth = Math.max(1, nbt.getInt("Depth", 1));
+        upgradeCount = QuarryUpgrades.clampUpgradeCount(nbt.getInt("UpgradeCount", 0));
         clampAreaIndex();
     }
 

@@ -55,7 +55,7 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
                     if (client != null && client.interactionManager != null)
                         client.interactionManager.clickButton(handler.syncId, 0);
                 }
-        ).dimensions(x + 10, y + 100, 78, 20).build();
+        ).dimensions(x + 8, y + 100, 88, 20).build();
         this.addDrawableChild(filterButton);
     }
 
@@ -86,10 +86,10 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
         // Output grid 4×6
         for (int r = 0; r < 4; r++)
             for (int c = 0; c < 6; c++)
-                drawSlot(ctx, x + 67 + c * 18, y + 9 + r * 18);
+                drawSlot(ctx, x + 61 + c * 18, y + 9 + r * 18);
 
         // Pickaxe slot
-        int px = x + 14, py = y + 19;
+        int px = x + 9, py = y + 19;
         drawSlot(ctx, px, py);
         if (!handler.hasPickaxe()) {
             ctx.drawItem(Items.IRON_PICKAXE.getDefaultStack(), px + 1, py + 1);
@@ -97,7 +97,7 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
         }
 
         // Fuel slot
-        int fx = x + 14, fy = y + 57;
+        int fx = x + 9, fy = y + 57;
         drawSlot(ctx, fx, fy);
         if (!handler.hasFuel()) {
             ctx.drawItem(Items.COAL.getDefaultStack(), fx + 1, fy + 1);
@@ -108,16 +108,16 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
         if (handler.isBurning()) {
             int fl = handler.getScaledFuelProgress();
             ctx.drawTexture(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE,
-                    x + 16, y + 41 + 12 - fl, 176f, (float)(12 - fl), 14, fl + 1, 256, 256);
+                    x + 11, y + 41 + 12 - fl, 176f, (float)(12 - fl), 14, fl + 1, 256, 256);
         }
 
         // Arrow
         ctx.drawTexture(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE,
-                x + 40, y + 38, 79f, 35f, 24, 16, 256, 256);
+                x + 35, y + 38, 79f, 35f, 24, 16, 256, 256);
         int arrow = handler.getScaledMiningProgress();
         if (arrow > 0)
             ctx.drawTexture(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE,
-                    x + 40, y + 38, 176f, 14f, arrow + 1, 16, 256, 256);
+                    x + 35, y + 38, 176f, 14f, arrow + 1, 16, 256, 256);
 
         // ── Separator ──
         drawSep(ctx, x + 7, y + 86, 162);

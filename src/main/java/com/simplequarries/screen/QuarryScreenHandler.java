@@ -56,13 +56,13 @@ public class QuarryScreenHandler extends ScreenHandler {
         inventory.onOpen(playerInventory.player);
 
         // Slot 0: Pickaxe
-        this.addSlot(new PickaxeSlot(blockEntity, QuarryBlockEntity.PICKAXE_SLOT, 15, 20));
+        this.addSlot(new PickaxeSlot(blockEntity, QuarryBlockEntity.PICKAXE_SLOT, 10, 20));
         
         // Slot 1: Fuel
-        this.addSlot(new FuelSlot(blockEntity, QuarryBlockEntity.FUEL_SLOT, 15, 58));
+        this.addSlot(new FuelSlot(blockEntity, QuarryBlockEntity.FUEL_SLOT, 10, 58));
 
         // Slots 2-25: Output grid (4 rows x 6 cols)
-        int outputStartX = 68;
+        int outputStartX = 62;
         int outputStartY = 10;
         for (int row = 0; row < 4; row++) {
             for (int col = 0; col < 6; col++) {

@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "simplequarries:item/quarry_speed_upgrade_template"
+  }
+}

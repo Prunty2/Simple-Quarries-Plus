@@ -1,7 +1,5 @@
-package com.simplequarries.recipe;
+package com.simplequarries;
 
-import com.simplequarries.QuarryUpgrades;
-import com.simplequarries.SimpleQuarries;
 import com.simplequarries.item.QuarryBlockItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.recipe.Ingredient;
@@ -13,8 +11,8 @@ import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.world.World;
 
-public class QuarryUpgradeRecipe extends SpecialCraftingRecipe {
-    public QuarryUpgradeRecipe(CraftingRecipeCategory category) {
+public class QuarrySpeedUpgradeRecipe extends SpecialCraftingRecipe {
+    public QuarrySpeedUpgradeRecipe(CraftingRecipeCategory category) {
         super(category);
     }
 
@@ -34,7 +32,7 @@ public class QuarryUpgradeRecipe extends SpecialCraftingRecipe {
                     return false; // Multiple quarries present
                 }
                 quarryStack = stack;
-            } else if (stack.isOf(SimpleQuarries.QUARRY_UPGRADE_TEMPLATE)) {
+            } else if (stack.isOf(SimpleQuarries.QUARRY_SPEED_UPGRADE_TEMPLATE)) {
                 templateCount++;
                 if (templateCount > 1) {
                     return false; // Only one template allowed
@@ -48,8 +46,8 @@ public class QuarryUpgradeRecipe extends SpecialCraftingRecipe {
             return false;
         }
 
-        int currentUpgrades = QuarryBlockItem.getUpgradeCount(quarryStack);
-        return currentUpgrades < QuarryUpgrades.MAX_AREA_UPGRADES;
+        int currentSpeedUpgrades = QuarryBlockItem.getSpeedUpgradeCount(quarryStack);
+        return currentSpeedUpgrades < QuarryUpgrades.MAX_SPEED_UPGRADES;
     }
 
     @Override
@@ -67,22 +65,31 @@ public class QuarryUpgradeRecipe extends SpecialCraftingRecipe {
             return ItemStack.EMPTY;
         }
 
+        // Keep area upgrades, add speed upgrade
+        int currentAreaUpgrades = QuarryBlockItem.getUpgradeCount(quarryStack);
+        
         ItemStack result = quarryStack.copy();
         result.setCount(1);
-        int upgradedCount = QuarryBlockItem.getUpgradeCount(quarryStack) + 1;
-        QuarryBlockItem.setUpgradeCount(result, upgradedCount);
+        
+        // Set area upgrades (keep existing)
+        QuarryBlockItem.setUpgradeCount(result, currentAreaUpgrades);
+        
+        // Add speed upgrade
+        int upgradedSpeed = QuarryBlockItem.getSpeedUpgradeCount(quarryStack) + 1;
+        QuarryBlockItem.setSpeedUpgradeCount(result, upgradedSpeed);
+        
         return result;
     }
 
     @Override
     public RecipeSerializer<? extends SpecialCraftingRecipe> getSerializer() {
-        return SimpleQuarries.QUARRY_UPGRADE_RECIPE_SERIALIZER;
+        return SimpleQuarries.QUARRY_SPEED_UPGRADE_RECIPE_SERIALIZER;
     }
 
     public DefaultedList<net.minecraft.recipe.Ingredient> getIngredients() {
         DefaultedList<Ingredient> ingredients = DefaultedList.of();
         ingredients.add(Ingredient.ofItems(SimpleQuarries.QUARRY_BLOCK_ITEM));
-        ingredients.add(Ingredient.ofItems(SimpleQuarries.QUARRY_UPGRADE_TEMPLATE));
+        ingredients.add(Ingredient.ofItems(SimpleQuarries.QUARRY_SPEED_UPGRADE_TEMPLATE));
         return ingredients;
     }
 

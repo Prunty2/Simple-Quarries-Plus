@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "simplequarries:item/quarry_speed_upgrade_template"
+  }
+}

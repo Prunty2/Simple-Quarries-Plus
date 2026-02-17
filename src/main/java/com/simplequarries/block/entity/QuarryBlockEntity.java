@@ -28,6 +28,7 @@ import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.text.Text;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
@@ -45,6 +46,7 @@ import java.util.Set;
  * - Slot 0: Pickaxe slot
  * - Slot 1: Fuel slot
  * - Slots 2-25: Output slots (24 slots = 4 rows x 6 cols)
+ * - Slots 26-34: Filter slots (9 slots = 3x3 grid)
  */
 public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHandlerFactory<QuarryScreenHandler.QuarryScreenData>, Inventory, SidedInventory {
     
@@ -53,12 +55,19 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
     public static final int FUEL_SLOT = 1;
     public static final int OUTPUT_START = 2;
     public static final int OUTPUT_SLOTS = 24;  // 4 rows x 6 cols
-    public static final int INVENTORY_SIZE = OUTPUT_START + OUTPUT_SLOTS; // 26 total slots
+    public static final int FILTER_START = 26;
+    public static final int FILTER_SLOTS = 9;   // 3x3 grid
+    public static final int INVENTORY_SIZE = FILTER_START + FILTER_SLOTS; // 35 total slots
+
+    // Filter modes
+    public static final int FILTER_DISABLED = 0;
+    public static final int FILTER_WHITELIST = 1;
+    public static final int FILTER_BLACKLIST = 2;
 
     // Sided inventory slot access arrays
-    private static final int[] TOP_SLOTS = { FUEL_SLOT };           // Insert fuel from top
-    private static final int[] BOTTOM_SLOTS = createBottomSlots();  // Extract outputs from bottom
-    private static final int[] SIDE_SLOTS = { PICKAXE_SLOT };       // Insert pickaxe from sides
+    private static final int[] TOP_SLOTS = { FUEL_SLOT };
+    private static final int[] BOTTOM_SLOTS = createBottomSlots();
+    private static final int[] SIDE_SLOTS = { PICKAXE_SLOT };
 
     // Valid pickaxes that can be used
     private static final Set<Item> VALID_PICKAXES = Set.of(
@@ -71,8 +80,7 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
             Items.NETHERITE_PICKAXE
     );
 
-    // Fuel burn times in ticks (like furnace) mapped to blocks mined
-    // Furnace burns coal for 1600 ticks (8 items), so coal = 8 blocks
+    // Fuel burn times mapped to blocks mined
     private static final Map<Item, Integer> FUEL_VALUES = Map.ofEntries(
             Map.entry(Items.COAL, 8),
             Map.entry(Items.CHARCOAL, 8),
@@ -82,7 +90,6 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
             Map.entry(Items.LAVA_BUCKET, 100),
             Map.entry(Items.STICK, 1),
             Map.entry(Items.BAMBOO, 1),
-            // Wooden items
             Map.entry(Items.OAK_LOG, 2),
             Map.entry(Items.SPRUCE_LOG, 2),
             Map.entry(Items.BIRCH_LOG, 2),
@@ -105,7 +112,7 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
     // Inventory storage
     private final DefaultedList<ItemStack> items = DefaultedList.ofSize(INVENTORY_SIZE, ItemStack.EMPTY);
 
-    // Property delegate for syncing data to the screen
+    // Property delegate for syncing data to the screen (6 properties now)
     private final PropertyDelegate propertyDelegate = new PropertyDelegate() {
         @Override
         public int get(int index) {
@@ -114,6 +121,8 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
                 case 1 -> lastFuelTime;
                 case 2 -> miningProgress;
                 case 3 -> ticksPerBlock;
+                case 4 -> filterMode;
+                case 5 -> 1; // chunk loading always enabled
                 default -> 0;
             };
         }
@@ -125,23 +134,28 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
                 case 1 -> lastFuelTime = value;
                 case 2 -> miningProgress = value;
                 case 3 -> ticksPerBlock = value;
+                case 4 -> filterMode = MathHelper.clamp(value, 0, 2);
+                case 5 -> {} // chunk loading always enabled, ignore
             }
         }
 
         @Override
         public int size() {
-            return 4;
+            return 6;
         }
     };
 
     // State tracking
-    private int burnTime = 0;           // Remaining blocks that can be mined with current fuel
-    private int lastFuelTime = 0;       // Last fuel item's total burn time (for progress bar)
-    private int miningProgress = 0;     // Current progress towards mining next block
-    private int ticksPerBlock = 0;      // Ticks needed to mine one block (based on pickaxe)
-    private int currentDepth = 1;       // Current mining depth below quarry
-    private int areaIndex = 0;          // Current position in MINING_OFFSETS array
-    private int upgradeCount = 0;       // Upgrades applied to this quarry
+    private int burnTime = 0;
+    private int lastFuelTime = 0;
+    private int miningProgress = 0;
+    private int ticksPerBlock = 0;
+    private int currentDepth = 1;
+    private int areaIndex = 0;
+    private int upgradeCount = 0;
+    private int speedUpgradeCount = 0;
+    private int filterMode = FILTER_DISABLED;
+    private boolean wasChunkForced = false;  // Track if we forced the chunk
 
     public QuarryBlockEntity(BlockPos pos, BlockState state) {
         super(SimpleQuarries.QUARRY_BLOCK_ENTITY, pos, state);
@@ -155,23 +169,33 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
             return;
         }
 
+        ServerWorld serverWorld = (ServerWorld) world;
         boolean dirty = false;
         ItemStack pickaxe = quarry.getStack(PICKAXE_SLOT);
+
+        // Redstone control: if powered, pause mining
+        if (world.isReceivingRedstonePower(pos)) {
+            quarry.resetProgress();
+            quarry.updateChunkLoading(serverWorld, false);
+            return;
+        }
 
         // Check if we have a valid pickaxe
         if (!quarry.isValidPickaxe(pickaxe)) {
             quarry.resetProgress();
             quarry.ticksPerBlock = 0;
+            quarry.updateChunkLoading(serverWorld, false);
             return;
         }
 
-        // Update mining speed based on pickaxe tier
+        // Update mining speed based on pickaxe tier + speed upgrades
         quarry.ticksPerBlock = quarry.getTicksPerBlockFor(pickaxe);
 
         // Check fuel - consume new fuel if needed
         if (quarry.burnTime <= 0) {
             if (!quarry.tryConsumeFuel()) {
                 quarry.resetProgress();
+                quarry.updateChunkLoading(serverWorld, false);
                 return;
             }
             dirty = true;
@@ -180,8 +204,12 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         // Safety check
         if (quarry.ticksPerBlock <= 0) {
             quarry.resetProgress();
+            quarry.updateChunkLoading(serverWorld, false);
             return;
         }
+
+        // Quarry is actively mining - update chunk loading
+        quarry.updateChunkLoading(serverWorld, true);
 
         // Increment mining progress
         quarry.miningProgress++;
@@ -191,10 +219,20 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
             quarry.miningProgress = 0;
 
             // Find and mine the next block
-            BlockPos target = quarry.findNextTarget((ServerWorld) world);
-            if (target != null && quarry.breakBlock((ServerWorld) world, target, pickaxe)) {
-                quarry.burnTime = Math.max(0, quarry.burnTime - 1);
-                dirty = true;
+            BlockPos target = quarry.findNextTarget(serverWorld);
+            if (target != null) {
+                if (quarry.breakBlock(serverWorld, target, pickaxe)) {
+                    quarry.burnTime = Math.max(0, quarry.burnTime - 1);
+                    dirty = true;
+                }
+            } else {
+                // Quarry has finished mining its entire area
+                quarry.resetProgress();
+                quarry.updateChunkLoading(serverWorld, false);
+                // Play level-up sound so the player knows
+                world.playSound(null, pos, net.minecraft.sound.SoundEvents.ENTITY_PLAYER_LEVELUP,
+                    net.minecraft.sound.SoundCategory.BLOCKS, 1.0f, 1.0f);
+                return;
             }
         }
 
@@ -203,17 +241,82 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         }
     }
 
+    // ==================== Chunk Loading ====================
+
     /**
-     * Reset mining progress
+     * Update chunk loading state based on whether the quarry is actively mining
      */
+    private void updateChunkLoading(ServerWorld world, boolean shouldBeActive) {
+        boolean shouldForce = shouldBeActive; // always chunk load when active
+        if (shouldForce != wasChunkForced) {
+            ChunkPos chunkPos = new ChunkPos(pos);
+            world.setChunkForced(chunkPos.x, chunkPos.z, shouldForce);
+            wasChunkForced = shouldForce;
+        }
+    }
+
+    /**
+     * Called when the quarry is removed - ensure chunk is unforced
+     */
+    public void onRemoved(ServerWorld world) {
+        if (wasChunkForced) {
+            ChunkPos chunkPos = new ChunkPos(pos);
+            world.setChunkForced(chunkPos.x, chunkPos.z, false);
+            wasChunkForced = false;
+        }
+    }
+
+    // Chunk loading is always enabled when the quarry is actively mining
+
+    // ==================== Filter System ====================
+
+    public int getFilterMode() {
+        return filterMode;
+    }
+
+    public void setFilterMode(int mode) {
+        this.filterMode = MathHelper.clamp(mode, 0, 2);
+        markDirty();
+    }
+
+    public void cycleFilterMode() {
+        setFilterMode((filterMode + 1) % 3);
+    }
+
+    /**
+     * Check if a specific drop item should be kept based on filter settings.
+     * Filters match against the actual DROP ITEMS, not the block being mined.
+     * This way putting cobblestone in the filter works even though the block is stone.
+     * - Whitelist: only keep drops that match the filter
+     * - Blacklist: void drops that match the filter
+     */
+    private boolean shouldKeepDrop(ItemStack drop) {
+        if (filterMode == FILTER_DISABLED) {
+            return true;
+        }
+
+        boolean matchesFilter = false;
+        for (int i = FILTER_START; i < FILTER_START + FILTER_SLOTS; i++) {
+            ItemStack filterStack = items.get(i);
+            if (!filterStack.isEmpty() && filterStack.getItem() == drop.getItem()) {
+                matchesFilter = true;
+                break;
+            }
+        }
+
+        if (filterMode == FILTER_WHITELIST) {
+            return matchesFilter; // Only keep matching drops
+        } else { // FILTER_BLACKLIST
+            return !matchesFilter; // Void matching drops
+        }
+    }
+
+    // ==================== Mining Logic ====================
+
     private void resetProgress() {
         miningProgress = 0;
     }
 
-    /**
-     * Try to consume a fuel item from the fuel slot
-     * @return true if fuel was consumed
-     */
     private boolean tryConsumeFuel() {
         ItemStack fuel = getStack(FUEL_SLOT);
         int gainedBlocks = getFuelValue(fuel);
@@ -226,7 +329,6 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         Item fuelItem = fuel.getItem();
         fuel.decrement(1);
 
-        // Handle items that leave a remainder (like lava bucket -> bucket)
         if (fuel.isEmpty()) {
             ItemStack remainder = fuelItem.getRecipeRemainder(fuel);
             if (!remainder.isEmpty()) {
@@ -240,23 +342,12 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         return true;
     }
 
-    /**
-     * Get the fuel value (blocks that can be mined) for an item
-     */
     public int getFuelValue(ItemStack fuel) {
         if (fuel.isEmpty()) {
             return 0;
         }
-
-        // Check our predefined fuel values first
         Integer value = FUEL_VALUES.get(fuel.getItem());
-        if (value != null) {
-            return value;
-        }
-
-        // Fallback: Use a simple default for other items
-        // In 1.21.10, the FuelRegistry API changed
-        return 0;
+        return value != null ? value : 0;
     }
 
     /**
@@ -265,41 +356,37 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
     private boolean breakBlock(ServerWorld world, BlockPos target, ItemStack pickaxe) {
         BlockState targetState = world.getBlockState(target);
         
-        // Skip air and unbreakable blocks
         if (targetState.isAir() || targetState.getHardness(world, target) < 0) {
             return false;
         }
 
-        // Get the drops using the pickaxe
+        // Get the drops using the pickaxe (Fortune and Silk Touch are handled automatically
+        // by getDroppedStacks since the pickaxe's enchantments affect the loot context)
         List<ItemStack> drops = Block.getDroppedStacks(targetState, world, target, world.getBlockEntity(target), null, pickaxe);
         
-        // Break the block without dropping items (we handle drops manually)
         boolean removed = world.breakBlock(target, false);
 
         if (!removed) {
             return false;
         }
 
-        // Insert drops into output inventory
+        // Insert drops into output inventory, filtering per-item based on filter settings
         for (ItemStack drop : drops) {
+            if (!shouldKeepDrop(drop)) {
+                continue; // Void this drop
+            }
             ItemStack remainder = insertIntoOutputs(drop.copy());
-            // If we couldn't fit all items, drop them in the world
             if (!remainder.isEmpty()) {
                 Block.dropStack(world, pos.up(), remainder);
             }
         }
 
-        // Damage the pickaxe
         damagePickaxe(pickaxe);
         return true;
     }
 
-    /**
-     * Damage the pickaxe by 1 durability
-     */
     private void damagePickaxe(ItemStack pickaxe) {
         if (world instanceof ServerWorld serverWorld && pickaxe.isDamageable()) {
-            // Unbreaking: Each level gives a chance to not consume durability (vanilla: 100/(level+1)%)
             int unbreaking = getEnchantmentLevel(net.minecraft.enchantment.Enchantments.UNBREAKING, pickaxe);
             boolean damage = true;
             if (unbreaking > 0) {
@@ -321,12 +408,12 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
     }
 
     /**
-     * Find the next block to mine
+     * Find the next block to mine, respecting filters
      */
     @Nullable
     private BlockPos findNextTarget(ServerWorld world) {
         int attempts = 0;
-        int maxAttempts = Math.max(512, getTotalAreaSlots() * 2); // Prevent infinite loops
+        int maxAttempts = Math.max(512, getTotalAreaSlots() * 2);
 
         while (pos.getY() - currentDepth >= world.getBottomY() && attempts < maxAttempts) {
             BlockPos offset = getOffsetForIndex(areaIndex);
@@ -336,17 +423,14 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
 
             BlockState state = world.getBlockState(target);
             
-            // Skip air blocks
             if (state.isAir()) {
                 continue;
             }
 
-            // Skip unbreakable blocks (bedrock, etc.)
             if (state.getHardness(world, target) < 0) {
                 continue;
             }
 
-            // Don't mine other quarries
             if (state.getBlock() == SimpleQuarries.QUARRY_BLOCK) {
                 continue;
             }
@@ -357,9 +441,6 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         return null;
     }
 
-    /**
-     * Advance the mining pointer to the next position
-     */
     private void advancePointer() {
         areaIndex++;
         if (areaIndex >= getTotalAreaSlots()) {
@@ -368,17 +449,12 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         }
     }
 
-    /**
-     * Insert an item stack into the output slots
-     * @return remaining items that couldn't be inserted
-     */
     private ItemStack insertIntoOutputs(ItemStack stack) {
         if (stack.isEmpty()) {
             return ItemStack.EMPTY;
         }
 
-        // First pass: try to merge with existing stacks
-        for (int i = OUTPUT_START; i < INVENTORY_SIZE; i++) {
+        for (int i = OUTPUT_START; i < OUTPUT_START + OUTPUT_SLOTS; i++) {
             ItemStack existing = items.get(i);
             if (!existing.isEmpty() && ItemStack.areItemsAndComponentsEqual(existing, stack)) {
                 int transferable = Math.min(stack.getCount(), 
@@ -394,8 +470,7 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
             }
         }
 
-        // Second pass: find empty slots
-        for (int i = OUTPUT_START; i < INVENTORY_SIZE; i++) {
+        for (int i = OUTPUT_START; i < OUTPUT_START + OUTPUT_SLOTS; i++) {
             ItemStack existing = items.get(i);
             if (existing.isEmpty()) {
                 items.set(i, stack.copy());
@@ -407,9 +482,6 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         return stack;
     }
 
-    /**
-     * Check if an item is a valid pickaxe
-     */
     public boolean isValidPickaxe(ItemStack stack) {
         return VALID_PICKAXES.contains(stack.getItem());
     }
@@ -424,14 +496,20 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         markDirty();
     }
 
+    public int getSpeedUpgradeCount() {
+        return speedUpgradeCount;
+    }
+
+    public void setSpeedUpgradeCount(int count) {
+        speedUpgradeCount = QuarryUpgrades.clampSpeedCount(count);
+        markDirty();
+    }
+
     private void clampAreaIndex() {
         int maxIndex = Math.max(0, getTotalAreaSlots() - 1);
         areaIndex = MathHelper.clamp(areaIndex, 0, maxIndex);
     }
 
-    /**
-     * Get the level of an enchantment on an item stack, handling registry lookups
-     */
     private int getEnchantmentLevel(RegistryKey<Enchantment> enchantmentKey, ItemStack stack) {
         ItemEnchantmentsComponent enchantments = net.minecraft.enchantment.EnchantmentHelper.getEnchantments(stack);
         for (RegistryEntry<Enchantment> entry : enchantments.getEnchantments()) {
@@ -443,7 +521,7 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
     }
 
     /**
-     * Get the mining speed (ticks per block) for a pickaxe
+     * Get the mining speed (ticks per block) for a pickaxe, with speed upgrades applied
      */
     private int getTicksPerBlockFor(ItemStack pickaxe) {
         if (!isValidPickaxe(pickaxe)) {
@@ -461,18 +539,19 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         else if (item == Items.NETHERITE_PICKAXE) baseTicks = 40;
         else return 0;
 
-        // Apply Efficiency: Each level increases speed by 25% (vanilla formula)
+        // Apply Efficiency enchantment
         int efficiency = getEnchantmentLevel(net.minecraft.enchantment.Enchantments.EFFICIENCY, pickaxe);
         if (efficiency > 0) {
             double speedMultiplier = 1.0 + 0.25 * (efficiency * efficiency + 1);
-            baseTicks = (int)Math.round(baseTicks / speedMultiplier);
+            baseTicks = (int) Math.round(baseTicks / speedMultiplier);
         }
+
+        // Apply speed upgrades (each reduces time by 20% multiplicatively)
+        baseTicks = (int) Math.round(baseTicks * QuarryUpgrades.speedMultiplierForCount(speedUpgradeCount));
+
         return Math.max(1, baseTicks);
     }
 
-    /**
-     * Get the property delegate for screen syncing
-     */
     public PropertyDelegate getPropertyDelegate() {
         return propertyDelegate;
     }
@@ -481,7 +560,6 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
 
     @Override
     protected void writeData(WriteView data) {
-        // Save inventory using a sub-view for items
         WriteView.ListView itemsList = data.getList("Items");
         for (int i = 0; i < items.size(); i++) {
             ItemStack stack = items.get(i);
@@ -499,11 +577,13 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         data.putInt("Depth", currentDepth);
         data.putInt("AreaIndex", areaIndex);
         data.putInt("UpgradeCount", upgradeCount);
+        data.putInt("SpeedUpgradeCount", speedUpgradeCount);
+        data.putInt("FilterMode", filterMode);
+        // chunkLoaderEnabled removed — always on
     }
 
     @Override
     protected void readData(ReadView data) {
-        // Load inventory
         for (int i = 0; i < items.size(); i++) {
             items.set(i, ItemStack.EMPTY);
         }
@@ -522,6 +602,9 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         ticksPerBlock = data.getInt("TicksPerBlock", 0);
         currentDepth = Math.max(1, data.getInt("Depth", 1));
         upgradeCount = QuarryUpgrades.clampUpgradeCount(data.getInt("UpgradeCount", 0));
+        speedUpgradeCount = QuarryUpgrades.clampSpeedCount(data.getInt("SpeedUpgradeCount", 0));
+        filterMode = MathHelper.clamp(data.getInt("FilterMode", 0), 0, 2);
+        // chunkLoaderEnabled removed — always on
         clampAreaIndex();
     }
 
@@ -607,9 +690,6 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
 
     // ==================== Helper Methods ====================
 
-    /**
-     * Get the current mining area size (N x N) based on upgrades
-     */
     private int getMiningAreaSize() {
         return QuarryUpgrades.areaForCount(upgradeCount);
     }
@@ -627,13 +707,9 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         return new BlockPos(xIndex - radius, 0, zIndex - radius);
     }
 
-    /**
-     * Create the array of output slot indices for bottom extraction
-     * Also includes fuel slot for extracting empty buckets
-     */
     private static int[] createBottomSlots() {
-        int[] slots = new int[OUTPUT_SLOTS + 1];  // +1 for fuel slot
-        slots[0] = FUEL_SLOT;  // Include fuel slot for bucket extraction
+        int[] slots = new int[OUTPUT_SLOTS + 1];
+        slots[0] = FUEL_SLOT;
         for (int i = 0; i < OUTPUT_SLOTS; i++) {
             slots[i + 1] = OUTPUT_START + i;
         }
@@ -645,11 +721,11 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
     @Override
     public int[] getAvailableSlots(Direction side) {
         if (side == Direction.DOWN) {
-            return BOTTOM_SLOTS;  // Extract mined items from bottom
+            return BOTTOM_SLOTS;
         } else if (side == Direction.UP) {
-            return TOP_SLOTS;     // Insert fuel from top
+            return TOP_SLOTS;
         } else {
-            return SIDE_SLOTS;    // Insert pickaxe from sides
+            return SIDE_SLOTS;
         }
     }
 
@@ -661,17 +737,18 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         if (slot == FUEL_SLOT) {
             return getFuelValue(stack) > 0;
         }
-        // Don't allow inserting into output slots
+        // Filter slots accept any item (for reference)
+        if (slot >= FILTER_START && slot < FILTER_START + FILTER_SLOTS) {
+            return true;
+        }
         return false;
     }
 
     @Override
     public boolean canExtract(int slot, ItemStack stack, Direction dir) {
-        // Allow extracting from output slots
-        if (slot >= OUTPUT_START) {
+        if (slot >= OUTPUT_START && slot < OUTPUT_START + OUTPUT_SLOTS) {
             return true;
         }
-        // Allow extracting empty buckets from fuel slot (remainder from lava bucket)
         if (slot == FUEL_SLOT && stack.isOf(Items.BUCKET)) {
             return true;
         }

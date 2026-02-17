@@ -1,156 +1,220 @@
 package com.simplequarries.screen;
 
+import com.simplequarries.block.entity.QuarryBlockEntity;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
+import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.Items;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
 /**
- * Client-side screen for the Quarry GUI
- * 
- * Layout (furnace-style):
- * - Left: Pickaxe slot (top), Fuel slot (bottom) with flame
- * - Center: Progress arrow
- * - Right: 4x6 output grid (24 slots)
- * - Bottom: Player inventory
+ * Client-side screen for the Quarry GUI — spacious layout
+ *
+ * Layout (top to bottom):
+ *   Row 1: [Pickaxe] [Flame] [Arrow]  |  [4x6 Output Grid]
+ *   ---separator---
+ *   Row 2: [Filter Button]  |  [3x3 Filter Grid]
+ *   ---separator---
+ *   Row 3: Player inventory (3 rows + hotbar)
  */
 public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
-    
-    // Furnace texture for the background and sprites
+
     private static final Identifier FURNACE_TEXTURE = Identifier.of("minecraft", "textures/gui/container/furnace.png");
+
+    private static final int BG       = 0xFFC6C6C6;
+    private static final int LIGHT    = 0xFFFFFFFF;
+    private static final int DARK     = 0xFF555555;
+    private static final int DARKER   = 0xFF373737;
+    private static final int SLOT_BG  = 0xFF8B8B8B;
+    private static final int SEP      = 0xFFA0A0A0;
+    private static final int TXT      = 4210752;
+
+    private ButtonWidget filterButton;
 
     public QuarryScreen(QuarryScreenHandler handler, PlayerInventory inventory, Text title) {
         super(handler, inventory, title);
-        // Standard furnace-like dimensions
         this.backgroundWidth = 176;
-        this.backgroundHeight = 166;
-        this.playerInventoryTitleY = this.backgroundHeight - 94;
+        this.backgroundHeight = 244;
+        this.playerInventoryTitleY = 146;
     }
 
     @Override
     protected void init() {
         super.init();
         titleX = 8;
-    }
 
-    @Override
-    protected void drawBackground(DrawContext context, float delta, int mouseX, int mouseY) {
         int x = (this.width - this.backgroundWidth) / 2;
         int y = (this.height - this.backgroundHeight) / 2;
 
-        // Draw the furnace background as base
-        context.drawTexture(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE, x, y, 0.0f, 0.0f, this.backgroundWidth, this.backgroundHeight, 256, 256);
+        filterButton = ButtonWidget.builder(
+                getFilterText(),
+                btn -> {
+                    if (client != null && client.interactionManager != null)
+                        client.interactionManager.clickButton(handler.syncId, 0);
+                }
+        ).dimensions(x + 8, y + 104, 88, 20).build();
+        this.addDrawableChild(filterButton);
+    }
 
-        // Cover the furnace's default slots with background color, then draw our custom layout
-        // Fill the area between arrow and output grid, and cover furnace slots
-        context.fill(x + 26, y + 5, x + 61, y + 80, 0xFFC6C6C6);
-        // Fill the furnace output slot area (the large slot that appears around x=116, y=35)
-        context.fill(x + 108, y + 28, x + 138, y + 58, 0xFFC6C6C6);
-        
-        // Draw custom slot backgrounds for the output grid (4x6)
-        // Visual slot background is 18x18, item renders at +1,+1 inside it
-        int outputStartX = x + 61;
-        int outputStartY = y + 7;
-        for (int row = 0; row < 4; row++) {
-            for (int col = 0; col < 6; col++) {
-                int slotX = outputStartX + col * 18;
-                int slotY = outputStartY + row * 18;
-                drawSlot(context, slotX, slotY);
-            }
-        }
+    private Text getFilterText() {
+        return switch (handler.getFilterMode()) {
+            case QuarryBlockEntity.FILTER_WHITELIST -> Text.literal("§aFilter: Whitelist");
+            case QuarryBlockEntity.FILTER_BLACKLIST -> Text.literal("§cFilter: Blacklist");
+            default -> Text.literal("§7Filter: Disabled");
+        };
+    }
 
-        // Draw pickaxe slot with highlight (at 8, 17)
-        int pickaxeSlotX = x + 7;
-        int pickaxeSlotY = y + 16;
-        drawSlotHighlight(context, pickaxeSlotX, pickaxeSlotY, 0xFFAA7744); // Brown tint
-        
-        // Draw pickaxe icon hint if slot is empty
+    @Override
+    protected void handledScreenTick() {
+        super.handledScreenTick();
+        if (filterButton != null) filterButton.setMessage(getFilterText());
+    }
+
+    @Override
+    protected void drawBackground(DrawContext ctx, float delta, int mouseX, int mouseY) {
+        int x = (this.width - this.backgroundWidth) / 2;
+        int y = (this.height - this.backgroundHeight) / 2;
+
+        // ── Background panel ──
+        drawPanel(ctx, x, y, backgroundWidth, backgroundHeight);
+
+        // ══════════ TOP: Mining section ══════════
+
+        // Output grid 4×6
+        for (int r = 0; r < 4; r++)
+            for (int c = 0; c < 6; c++)
+                drawSlot(ctx, x + 61 + c * 18, y + 9 + r * 18);
+
+        // Pickaxe slot
+        int px = x + 9, py = y + 19;
+        drawSlot(ctx, px, py);
         if (!handler.hasPickaxe()) {
-            context.drawItem(Items.IRON_PICKAXE.getDefaultStack(), pickaxeSlotX + 1, pickaxeSlotY + 1);
-            context.fill(pickaxeSlotX + 1, pickaxeSlotY + 1, pickaxeSlotX + 17, pickaxeSlotY + 17, 0x80000000);
+            ctx.drawItem(Items.IRON_PICKAXE.getDefaultStack(), px + 1, py + 1);
+            ctx.fill(px + 1, py + 1, px + 17, py + 17, 0x80C6C6C6);
         }
 
-        // Draw fuel slot with highlight (at 8, 53)
-        int fuelSlotX = x + 7;
-        int fuelSlotY = y + 52;
-        drawSlotHighlight(context, fuelSlotX, fuelSlotY, 0xFFDD6600); // Orange tint
-        
-        // Draw coal icon hint if slot is empty
+        // Fuel slot
+        int fx = x + 9, fy = y + 57;
+        drawSlot(ctx, fx, fy);
         if (!handler.hasFuel()) {
-            context.drawItem(Items.COAL.getDefaultStack(), fuelSlotX + 1, fuelSlotY + 1);
-            context.fill(fuelSlotX + 1, fuelSlotY + 1, fuelSlotX + 17, fuelSlotY + 17, 0x80000000);
+            ctx.drawItem(Items.COAL.getDefaultStack(), fx + 1, fy + 1);
+            ctx.fill(fx + 1, fy + 1, fx + 17, fy + 17, 0x80C6C6C6);
         }
 
-        // Draw fuel flame indicator (between pickaxe and fuel slots)
-        int flameX = x + 9;
-        int flameY = y + 36;
+        // Flame
         if (handler.isBurning()) {
-            int flame = handler.getScaledFuelProgress();
-            context.drawTexture(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE, flameX, flameY + 12 - flame, 176.0f, (float)(12 - flame), 14, flame + 1, 256, 256);
+            int fl = handler.getScaledFuelProgress();
+            ctx.drawTexture(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE,
+                    x + 11, y + 41 + 12 - fl, 176f, (float)(12 - fl), 14, fl + 1, 256, 256);
         }
 
-        // Draw progress arrow (pointing right toward output)
-        int arrowX = x + 34;
-        int arrowY = y + 34;
-        // Draw empty arrow background
-        context.drawTexture(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE, arrowX, arrowY, 79.0f, 35.0f, 24, 16, 256, 256);
-        // Draw filled arrow progress
+        // Arrow
+        ctx.drawTexture(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE,
+                x + 35, y + 38, 79f, 35f, 24, 16, 256, 256);
         int arrow = handler.getScaledMiningProgress();
-        if (arrow > 0) {
-            context.drawTexture(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE, arrowX, arrowY, 176.0f, 14.0f, arrow + 1, 16, 256, 256);
+        if (arrow > 0)
+            ctx.drawTexture(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE,
+                    x + 35, y + 38, 176f, 14f, arrow + 1, 16, 256, 256);
+
+        // ── Fuel counter ──
+        {
+            int fuel = handler.getBurnTime();
+            boolean hasFuelItem = handler.hasValidFuel();
+            String fuelStr;
+            int barColor;
+            if (fuel > 0) {
+                fuelStr = fuel + " blocks";
+                barColor = 0xFF44AA44; // green
+            } else if (hasFuelItem) {
+                fuelStr = "Ready";
+                barColor = 0xFFAAAA22; // yellow
+            } else {
+                fuelStr = "Empty";
+                barColor = 0xFFAA4444; // red
+            }
+            // Draw below the fuel slot, left-aligned with it
+            ctx.drawText(textRenderer, Text.literal(fuelStr), x + 8, y + 78, barColor, true);
         }
+
+        // ── Separator ──
+        drawSep(ctx, x + 7, y + 90, 162);
+
+        // ══════════ MIDDLE: Filter section ══════════
+
+        // "Filter Items" label
+        ctx.drawText(textRenderer, Text.literal("Filter Items"), x + 100, y + 88, TXT, false);
+
+        // 3×3 filter grid
+        int accentColor = getFilterAccent();
+        int gx = x + 99, gy = y + 95;
+
+        // Subtle tinted background when filter is active
+        if (handler.getFilterMode() != QuarryBlockEntity.FILTER_DISABLED)
+            ctx.fill(gx - 1, gy - 1, gx + 55, gy + 55, (accentColor & 0x00FFFFFF) | 0x20000000);
+
+        for (int r = 0; r < 3; r++)
+            for (int c = 0; c < 3; c++)
+                drawSlot(ctx, gx + c * 18, gy + r * 18);
+
+        // ── Separator ──
+        drawSep(ctx, x + 7, y + 152, 162);
+
+        // ══════════ BOTTOM: Player inventory ══════════
+        for (int r = 0; r < 3; r++)
+            for (int c = 0; c < 9; c++)
+                drawSlot(ctx, x + 7 + c * 18, y + 157 + r * 18);
+
+        // Hotbar (4px gap)
+        for (int c = 0; c < 9; c++)
+            drawSlot(ctx, x + 7 + c * 18, y + 219);
+    }
+
+    private int getFilterAccent() {
+        return switch (handler.getFilterMode()) {
+            case QuarryBlockEntity.FILTER_WHITELIST -> 0xFF44BB44;
+            case QuarryBlockEntity.FILTER_BLACKLIST -> 0xFFBB4444;
+            default -> 0xFF888888;
+        };
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        this.renderBackground(context, mouseX, mouseY, delta);
-        super.render(context, mouseX, mouseY, delta);
-        this.drawMouseoverTooltip(context, mouseX, mouseY);
+    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+        renderBackground(ctx, mouseX, mouseY, delta);
+        super.render(ctx, mouseX, mouseY, delta);
+        drawMouseoverTooltip(ctx, mouseX, mouseY);
     }
 
     @Override
-    protected void drawForeground(DrawContext context, int mouseX, int mouseY) {
-        context.drawText(this.textRenderer, this.title, this.titleX, this.titleY, 4210752, false);
-        context.drawText(this.textRenderer, this.playerInventoryTitle, this.playerInventoryTitleX, this.playerInventoryTitleY, 4210752, false);
+    protected void drawForeground(DrawContext ctx, int mouseX, int mouseY) {
+        ctx.drawText(textRenderer, title, titleX, titleY, TXT, false);
+        ctx.drawText(textRenderer, playerInventoryTitle, playerInventoryTitleX, playerInventoryTitleY, TXT, false);
+
+        // Fuel display is drawn in drawBackground
     }
 
-    /**
-     * Draw a standard slot background
-     */
-    private void drawSlot(DrawContext context, int x, int y) {
-        // Outer border (dark on top-left, light on bottom-right for 3D effect)
-        context.fill(x, y, x + 18, y + 1, 0xFF373737);      // Top dark
-        context.fill(x, y, x + 1, y + 18, 0xFF373737);      // Left dark
-        context.fill(x + 17, y, x + 18, y + 18, 0xFFFFFFFF); // Right light
-        context.fill(x, y + 17, x + 18, y + 18, 0xFFFFFFFF); // Bottom light
-        // Inner slot area (dark)
-        context.fill(x + 1, y + 1, x + 17, y + 17, 0xFF8B8B8B);
+    // ── Drawing helpers ──
+
+    private void drawPanel(DrawContext ctx, int x, int y, int w, int h) {
+        ctx.fill(x, y, x + w, y + h, BG);
+        ctx.fill(x, y, x + w, y + 2, LIGHT);
+        ctx.fill(x, y, x + 2, y + h, LIGHT);
+        ctx.fill(x + w - 2, y, x + w, y + h, DARK);
+        ctx.fill(x, y + h - 2, x + w, y + h, DARK);
     }
 
-    /**
-     * Draw a highlighted slot background with colored border
-     */
-    private void drawSlotHighlight(DrawContext context, int x, int y, int borderColor) {
-        // Draw colored border
-        context.fill(x, y, x + 18, y + 2, borderColor);      // Top
-        context.fill(x, y, x + 2, y + 18, borderColor);      // Left
-        context.fill(x + 16, y, x + 18, y + 18, darkenColor(borderColor)); // Right
-        context.fill(x, y + 16, x + 18, y + 18, darkenColor(borderColor)); // Bottom
-        // Inner slot area
-        context.fill(x + 2, y + 2, x + 16, y + 16, 0xFF8B8B8B);
+    private void drawSlot(DrawContext ctx, int x, int y) {
+        ctx.fill(x, y, x + 18, y + 1, DARKER);
+        ctx.fill(x, y, x + 1, y + 18, DARKER);
+        ctx.fill(x + 17, y + 1, x + 18, y + 18, LIGHT);
+        ctx.fill(x + 1, y + 17, x + 17, y + 18, LIGHT);
+        ctx.fill(x + 1, y + 1, x + 17, y + 17, SLOT_BG);
     }
 
-    /**
-     * Darken a color for the shadow edge
-     */
-    private int darkenColor(int color) {
-        int a = (color >> 24) & 0xFF;
-        int r = Math.max(0, ((color >> 16) & 0xFF) - 60);
-        int g = Math.max(0, ((color >> 8) & 0xFF) - 60);
-        int b = Math.max(0, (color & 0xFF) - 60);
-        return (a << 24) | (r << 16) | (g << 8) | b;
+    private void drawSep(DrawContext ctx, int x, int y, int w) {
+        ctx.fill(x, y, x + w, y + 1, SEP);
+        ctx.fill(x, y + 1, x + w, y + 2, LIGHT);
     }
 }

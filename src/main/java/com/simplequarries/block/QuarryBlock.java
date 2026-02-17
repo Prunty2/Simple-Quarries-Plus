@@ -82,6 +82,7 @@ public class QuarryBlock extends BlockWithEntity {
         if (!state.isOf(world.getBlockState(pos).getBlock())) {
             BlockEntity blockEntity = world.getBlockEntity(pos);
             if (blockEntity instanceof QuarryBlockEntity quarry) {
+                quarry.onRemoved(world);
                 ItemScatterer.spawn(world, pos, quarry);
                 world.updateComparators(pos, this);
             }
@@ -109,6 +110,7 @@ public class QuarryBlock extends BlockWithEntity {
         super.onPlaced(world, pos, state, placer, itemStack);
         if (world.getBlockEntity(pos) instanceof QuarryBlockEntity quarry) {
             quarry.setUpgradeCount(QuarryBlockItem.getUpgradeCount(itemStack));
+            quarry.setSpeedUpgradeCount(QuarryBlockItem.getSpeedUpgradeCount(itemStack));
         }
     }
 

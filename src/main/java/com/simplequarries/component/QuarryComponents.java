@@ -12,11 +12,21 @@ public final class QuarryComponents {
     private QuarryComponents() {}
 
     public static ComponentType<Integer> UPGRADE_COUNT;
+    public static ComponentType<Integer> SPEED_UPGRADE_COUNT;
 
     public static void register() {
         UPGRADE_COUNT = Registry.register(
                 Registries.DATA_COMPONENT_TYPE,
                 Identifier.of(SimpleQuarries.MOD_ID, "quarry_upgrade_count"),
+                ComponentType.<Integer>builder()
+                        .codec(Codec.INT)
+                        .packetCodec(PacketCodecs.VAR_INT)
+                        .build()
+        );
+
+        SPEED_UPGRADE_COUNT = Registry.register(
+                Registries.DATA_COMPONENT_TYPE,
+                Identifier.of(SimpleQuarries.MOD_ID, "quarry_speed_upgrade_count"),
                 ComponentType.<Integer>builder()
                         .codec(Codec.INT)
                         .packetCodec(PacketCodecs.VAR_INT)

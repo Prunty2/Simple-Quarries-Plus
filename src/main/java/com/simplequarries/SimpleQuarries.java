@@ -4,6 +4,7 @@ import com.simplequarries.block.QuarryBlock;
 import com.simplequarries.block.entity.QuarryBlockEntity;
 import com.simplequarries.component.QuarryComponents;
 import com.simplequarries.item.QuarryBlockItem;
+import com.simplequarries.item.QuarrySpeedUpgradeTemplateItem;
 import com.simplequarries.item.QuarryUpgradeTemplateItem;
 import com.simplequarries.recipe.QuarryUpgradeRecipe;
 import com.simplequarries.loot.QuarryLootInjectors;
@@ -36,9 +37,11 @@ public class SimpleQuarries implements ModInitializer {
     public static Block QUARRY_BLOCK;
     public static QuarryBlockItem QUARRY_BLOCK_ITEM;
     public static Item QUARRY_UPGRADE_TEMPLATE;
+    public static Item QUARRY_SPEED_UPGRADE_TEMPLATE;
     public static BlockEntityType<QuarryBlockEntity> QUARRY_BLOCK_ENTITY;
     public static ScreenHandlerType<QuarryScreenHandler> QUARRY_SCREEN_HANDLER;
     public static RecipeSerializer<QuarryUpgradeRecipe> QUARRY_UPGRADE_RECIPE_SERIALIZER;
+    public static RecipeSerializer<QuarrySpeedUpgradeRecipe> QUARRY_SPEED_UPGRADE_RECIPE_SERIALIZER;
 
     @Override
     public void onInitialize() {
@@ -66,13 +69,22 @@ public class SimpleQuarries implements ModInitializer {
                 new QuarryBlockItem(QUARRY_BLOCK, new Item.Settings().registryKey(quarryItemKey).useBlockPrefixedTranslationKey())
         );
 
-        // Register the upgrade template item
+        // Register the area upgrade template item
         Identifier templateId = Identifier.of(MOD_ID, "quarry_upgrade_template");
         RegistryKey<Item> templateKey = RegistryKey.of(RegistryKeys.ITEM, templateId);
         QUARRY_UPGRADE_TEMPLATE = Registry.register(
                 Registries.ITEM,
                 templateKey,
                 new QuarryUpgradeTemplateItem(new Item.Settings().registryKey(templateKey))
+        );
+
+        // Register the speed upgrade template item
+        Identifier speedTemplateId = Identifier.of(MOD_ID, "quarry_speed_upgrade_template");
+        RegistryKey<Item> speedTemplateKey = RegistryKey.of(RegistryKeys.ITEM, speedTemplateId);
+        QUARRY_SPEED_UPGRADE_TEMPLATE = Registry.register(
+                Registries.ITEM,
+                speedTemplateKey,
+                new QuarrySpeedUpgradeTemplateItem(new Item.Settings().registryKey(speedTemplateKey))
         );
 
         // Register the block entity type
@@ -95,10 +107,17 @@ public class SimpleQuarries implements ModInitializer {
                 new SpecialCraftingRecipe.SpecialRecipeSerializer<>(QuarryUpgradeRecipe::new)
         );
 
+        QUARRY_SPEED_UPGRADE_RECIPE_SERIALIZER = Registry.register(
+                Registries.RECIPE_SERIALIZER,
+                Identifier.of(MOD_ID, "quarry_speed_upgrade"),
+                new SpecialCraftingRecipe.SpecialRecipeSerializer<>(QuarrySpeedUpgradeRecipe::new)
+        );
+
         // Add to functional item group
         ItemGroupEvents.modifyEntriesEvent(ItemGroups.FUNCTIONAL).register(entries -> {
             entries.add(QUARRY_BLOCK_ITEM);
             entries.add(QUARRY_UPGRADE_TEMPLATE);
+            entries.add(QUARRY_SPEED_UPGRADE_TEMPLATE);
         });
 
         QuarryLootInjectors.register();

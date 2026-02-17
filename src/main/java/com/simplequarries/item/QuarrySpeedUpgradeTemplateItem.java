@@ -17,6 +17,8 @@ public class QuarrySpeedUpgradeTemplateItem extends Item {
     @Override
     public void appendTooltip(ItemStack stack, Item.TooltipContext context, TooltipDisplayComponent display, Consumer<Text> textConsumer, TooltipType type) {
         super.appendTooltip(stack, context, display, textConsumer, type);
-        textConsumer.accept(Text.translatable("tooltip.simplequarries.speed_template").formatted(Formatting.GRAY));
+        textConsumer.accept(Text.empty()
+            .append(Text.literal("⚡ ").formatted(Formatting.AQUA))
+            .append(Text.translatable("tooltip.simplequarries.speed_template").formatted(Formatting.AQUA)));
     }
 }

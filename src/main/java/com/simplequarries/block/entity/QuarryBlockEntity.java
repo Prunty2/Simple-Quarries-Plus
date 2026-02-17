@@ -220,9 +220,19 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
 
             // Find and mine the next block
             BlockPos target = quarry.findNextTarget(serverWorld);
-            if (target != null && quarry.breakBlock(serverWorld, target, pickaxe)) {
-                quarry.burnTime = Math.max(0, quarry.burnTime - 1);
-                dirty = true;
+            if (target != null) {
+                if (quarry.breakBlock(serverWorld, target, pickaxe)) {
+                    quarry.burnTime = Math.max(0, quarry.burnTime - 1);
+                    dirty = true;
+                }
+            } else {
+                // Quarry has finished mining its entire area
+                quarry.resetProgress();
+                quarry.updateChunkLoading(serverWorld, false);
+                // Play level-up sound so the player knows
+                world.playSound(null, pos, net.minecraft.sound.SoundEvents.ENTITY_PLAYER_LEVELUP,
+                    net.minecraft.sound.SoundCategory.BLOCKS, 1.0f, 1.0f);
+                return;
             }
         }
 

@@ -12,6 +12,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 
 import java.util.function.Consumer;
 
@@ -76,16 +77,23 @@ public class QuarryBlockItem extends BlockItem {
         int area = getMiningArea(stack);
         boolean areaAtMax = area >= QuarryUpgrades.MAX_AREA;
         if (areaAtMax) {
-            textConsumer.accept(Text.translatable("tooltip.simplequarries.quarry.area_max", area, area));
+            textConsumer.accept(Text.empty()
+                .append(Text.literal("Mining Area: ").formatted(Formatting.GRAY))
+                .append(Text.literal(area + "x" + area).formatted(Formatting.GREEN))
+                .append(Text.literal(" (Max)").formatted(Formatting.GOLD)));
         } else {
-            textConsumer.accept(Text.translatable("tooltip.simplequarries.quarry.area", area, area));
+            textConsumer.accept(Text.empty()
+                .append(Text.literal("Mining Area: ").formatted(Formatting.GRAY))
+                .append(Text.literal(area + "x" + area).formatted(Formatting.GREEN)));
         }
         
-        // Speed upgrades
+        // Speed upgrades (always show)
         int speed = getSpeedUpgradeCount(stack);
-        if (speed > 0) {
-            int percentBoost = (int) Math.round((1.0 - QuarryUpgrades.speedMultiplierForCount(speed)) * 100);
-            textConsumer.accept(Text.translatable("tooltip.simplequarries.quarry.speed", speed, percentBoost));
-        }
+        int percentBoost = (int) Math.round((1.0 - QuarryUpgrades.speedMultiplierForCount(speed)) * 100);
+        boolean speedAtMax = speed >= QuarryUpgrades.MAX_SPEED_UPGRADES;
+        textConsumer.accept(Text.empty()
+            .append(Text.literal("Speed: ").formatted(Formatting.GRAY))
+            .append(Text.literal("+" + percentBoost + "%").formatted(percentBoost > 0 ? Formatting.AQUA : Formatting.DARK_GRAY))
+            .append(speedAtMax ? Text.literal(" (Max)").formatted(Formatting.GOLD) : Text.empty()));
     }
 }

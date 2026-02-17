@@ -15,11 +15,11 @@ public final class QuarryUpgrades {
     public static final int MAX_SPEED_UPGRADES = 5;
     private static final double[] SPEED_MULTIPLIERS = {
         1.0,      // Base (no upgrades)
-        0.8,      // -20% = 80% of time
-        0.64,     // -36%
-        0.512,    // -49%
-        0.4096,   // -59%
-        0.32768   // -67% (5 upgrades = max)
+        0.8,      // -20% speed
+        0.6,      // -40% speed
+        0.4,      // -60% speed
+        0.2,      // -80% speed
+        0.0       // -100% speed (instant)
     };
 
     public static int clampUpgradeCount(int value) {

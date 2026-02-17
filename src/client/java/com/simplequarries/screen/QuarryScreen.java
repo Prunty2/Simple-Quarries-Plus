@@ -171,6 +171,22 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
     protected void drawForeground(DrawContext ctx, int mouseX, int mouseY) {
         ctx.drawText(textRenderer, title, titleX, titleY, TXT, false);
         ctx.drawText(textRenderer, playerInventoryTitle, playerInventoryTitleX, playerInventoryTitleY, TXT, false);
+
+        // Fuel remaining display below the fuel slot
+        int fuel = handler.getBurnTime();
+        String fuelText;
+        int fuelColor;
+        if (fuel > 0) {
+            fuelText = fuel + " blk" + (fuel != 1 ? "s" : "");
+            fuelColor = 0x55FF55; // green
+        } else if (handler.hasFuel()) {
+            fuelText = "Ready";
+            fuelColor = 0xFFFF55; // yellow
+        } else {
+            fuelText = "No fuel";
+            fuelColor = 0xFF5555; // red
+        }
+        ctx.drawText(textRenderer, Text.literal(fuelText), 8, 78, fuelColor, false);
     }
 
     // ── Drawing helpers ──

@@ -234,6 +234,11 @@ public class QuarryScreenHandler extends ScreenHandler {
         return !inventory.getStack(QuarryBlockEntity.FUEL_SLOT).isEmpty();
     }
 
+    public boolean hasValidFuel() {
+        ItemStack fuel = inventory.getStack(QuarryBlockEntity.FUEL_SLOT);
+        return !fuel.isEmpty() && blockEntity.getFuelValue(fuel) > 0;
+    }
+
     public String getFilterModeText() {
         return switch (getFilterMode()) {
             case QuarryBlockEntity.FILTER_WHITELIST -> "Whitelist";

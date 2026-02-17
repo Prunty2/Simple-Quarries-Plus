@@ -122,28 +122,22 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
         // ── Fuel counter ──
         {
             int fuel = handler.getBurnTime();
+            boolean hasFuelItem = handler.hasValidFuel();
             String fuelStr;
             int barColor;
             if (fuel > 0) {
-                fuelStr = "Fuel: " + fuel + " blocks";
+                fuelStr = fuel + " blocks";
                 barColor = 0xFF44AA44; // green
-            } else if (handler.hasFuel()) {
-                fuelStr = "Fuel: Ready";
+            } else if (hasFuelItem) {
+                fuelStr = "Ready";
                 barColor = 0xFFAAAA22; // yellow
             } else {
-                fuelStr = "Fuel: Empty";
+                fuelStr = "Empty";
                 barColor = 0xFFAA4444; // red
             }
-            int barX = x + 8;
             int barY = y + 78;
-            int barW = 50;
-            int barH = 10;
-            // Background
-            ctx.fill(barX, barY, barX + barW, barY + barH, 0xFF333333);
-            // Colored fill
-            ctx.fill(barX + 1, barY + 1, barX + barW - 1, barY + barH - 1, barColor);
-            // Text
-            ctx.drawText(textRenderer, Text.literal(fuelStr), barX + barW + 3, barY + 1, 0xFFFFFF, true);
+            // Draw text right-aligned next to fuel slot area
+            ctx.drawText(textRenderer, Text.literal(fuelStr), x + 30, barY + 1, barColor, true);
         }
 
         // ── Separator ──

@@ -1,14 +1,14 @@
 package com.simplequarries.screen;
 
 import com.simplequarries.block.entity.QuarryBlockEntity;
-import net.minecraft.client.gl.RenderPipelines;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.Items;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Items;
 
 /**
  * Client-side screen for the Quarry GUI — spacious layout
@@ -20,9 +20,9 @@ import net.minecraft.util.Identifier;
  *   ---separator---
  *   Row 3: Player inventory (3 rows + hotbar)
  */
-public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
+public class QuarryScreen extends AbstractContainerScreen<QuarryScreenHandler> {
 
-    private static final Identifier FURNACE_TEXTURE = Identifier.of("minecraft", "textures/gui/container/furnace.png");
+    private static final Identifier FURNACE_TEXTURE = Identifier.fromNamespaceAndPath("minecraft", "textures/gui/container/furnace.png");
 
     private static final int BG       = 0xFFC6C6C6;
     private static final int LIGHT    = 0xFFFFFFFF;
@@ -32,54 +32,54 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
     private static final int SEP      = 0xFFA0A0A0;
     private static final int TXT      = 4210752;
 
-    private ButtonWidget filterButton;
+    private Button filterButton;
 
-    public QuarryScreen(QuarryScreenHandler handler, PlayerInventory inventory, Text title) {
-        super(handler, inventory, title);
-        this.backgroundWidth = 176;
-        this.backgroundHeight = 244;
-        this.playerInventoryTitleY = 146;
+    public QuarryScreen(QuarryScreenHandler handler, Inventory inventory, Component title) {
+        super(handler, inventory, title, 176, 244);
+        this.inventoryLabelY = 146;
     }
 
     @Override
     protected void init() {
         super.init();
-        titleX = 8;
+        titleLabelX = 8;
 
-        int x = (this.width - this.backgroundWidth) / 2;
-        int y = (this.height - this.backgroundHeight) / 2;
+        int x = (this.width - this.imageWidth) / 2;
+        int y = (this.height - this.imageHeight) / 2;
 
-        filterButton = ButtonWidget.builder(
+        filterButton = Button.builder(
                 getFilterText(),
                 btn -> {
-                    if (client != null && client.interactionManager != null)
-                        client.interactionManager.clickButton(handler.syncId, 0);
+                    if (minecraft != null && minecraft.gameMode != null)
+                        minecraft.gameMode.handleInventoryButtonClick(menu.containerId, 0);
                 }
-        ).dimensions(x + 8, y + 104, 88, 20).build();
-        this.addDrawableChild(filterButton);
+        ).bounds(x + 8, y + 104, 88, 20).build();
+        this.addRenderableWidget(filterButton);
     }
 
-    private Text getFilterText() {
-        return switch (handler.getFilterMode()) {
-            case QuarryBlockEntity.FILTER_WHITELIST -> Text.literal("§aFilter: Whitelist");
-            case QuarryBlockEntity.FILTER_BLACKLIST -> Text.literal("§cFilter: Blacklist");
-            default -> Text.literal("§7Filter: Disabled");
+    private Component getFilterText() {
+        return switch (menu.getFilterMode()) {
+            case QuarryBlockEntity.FILTER_WHITELIST -> Component.literal("§aFilter: Whitelist");
+            case QuarryBlockEntity.FILTER_BLACKLIST -> Component.literal("§cFilter: Blacklist");
+            default -> Component.literal("§7Filter: Disabled");
         };
     }
 
     @Override
-    protected void handledScreenTick() {
-        super.handledScreenTick();
+    protected void containerTick() {
+        super.containerTick();
         if (filterButton != null) filterButton.setMessage(getFilterText());
     }
 
     @Override
-    protected void drawBackground(DrawContext ctx, float delta, int mouseX, int mouseY) {
-        int x = (this.width - this.backgroundWidth) / 2;
-        int y = (this.height - this.backgroundHeight) / 2;
+    public void extractBackground(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta) {
+        super.extractBackground(ctx, mouseX, mouseY, delta);
+
+        int x = (this.width - this.imageWidth) / 2;
+        int y = (this.height - this.imageHeight) / 2;
 
         // ── Background panel ──
-        drawPanel(ctx, x, y, backgroundWidth, backgroundHeight);
+        drawPanel(ctx, x, y, imageWidth, imageHeight);
 
         // ══════════ TOP: Mining section ══════════
 
@@ -91,38 +91,38 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
         // Pickaxe slot
         int px = x + 9, py = y + 19;
         drawSlot(ctx, px, py);
-        if (!handler.hasPickaxe()) {
-            ctx.drawItem(Items.IRON_PICKAXE.getDefaultStack(), px + 1, py + 1);
+        if (!menu.hasPickaxe()) {
+            ctx.item(Items.IRON_PICKAXE.getDefaultInstance(), px + 1, py + 1);
             ctx.fill(px + 1, py + 1, px + 17, py + 17, 0x80C6C6C6);
         }
 
         // Fuel slot
         int fx = x + 9, fy = y + 57;
         drawSlot(ctx, fx, fy);
-        if (!handler.hasFuel()) {
-            ctx.drawItem(Items.COAL.getDefaultStack(), fx + 1, fy + 1);
+        if (!menu.hasFuel()) {
+            ctx.item(Items.COAL.getDefaultInstance(), fx + 1, fy + 1);
             ctx.fill(fx + 1, fy + 1, fx + 17, fy + 17, 0x80C6C6C6);
         }
 
         // Flame
-        if (handler.isBurning()) {
-            int fl = handler.getScaledFuelProgress();
-            ctx.drawTexture(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE,
+        if (menu.isBurning()) {
+            int fl = menu.getScaledFuelProgress();
+            ctx.blit(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE,
                     x + 11, y + 41 + 12 - fl, 176f, (float)(12 - fl), 14, fl + 1, 256, 256);
         }
 
         // Arrow
-        ctx.drawTexture(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE,
+        ctx.blit(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE,
                 x + 35, y + 38, 79f, 35f, 24, 16, 256, 256);
-        int arrow = handler.getScaledMiningProgress();
+        int arrow = menu.getScaledMiningProgress();
         if (arrow > 0)
-            ctx.drawTexture(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE,
+            ctx.blit(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE,
                     x + 35, y + 38, 176f, 14f, arrow + 1, 16, 256, 256);
 
         // ── Fuel counter ──
         {
-            int fuel = handler.getBurnTime();
-            boolean hasFuelItem = handler.hasValidFuel();
+            int fuel = menu.getBurnTime();
+            boolean hasFuelItem = menu.hasValidFuel();
             String fuelStr;
             int barColor;
             if (fuel > 0) {
@@ -136,7 +136,7 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
                 barColor = 0xFFAA4444; // red
             }
             // Draw below the fuel slot, left-aligned with it
-            ctx.drawText(textRenderer, Text.literal(fuelStr), x + 8, y + 78, barColor, true);
+            ctx.text(font, Component.literal(fuelStr), x + 8, y + 78, barColor, true);
         }
 
         // ── Separator ──
@@ -145,14 +145,14 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
         // ══════════ MIDDLE: Filter section ══════════
 
         // "Filter Items" label
-        ctx.drawText(textRenderer, Text.literal("Filter Items"), x + 100, y + 88, TXT, false);
+        ctx.text(font, Component.literal("Filter Items"), x + 100, y + 88, TXT, false);
 
         // 3×3 filter grid
         int accentColor = getFilterAccent();
         int gx = x + 99, gy = y + 95;
 
         // Subtle tinted background when filter is active
-        if (handler.getFilterMode() != QuarryBlockEntity.FILTER_DISABLED)
+        if (menu.getFilterMode() != QuarryBlockEntity.FILTER_DISABLED)
             ctx.fill(gx - 1, gy - 1, gx + 55, gy + 55, (accentColor & 0x00FFFFFF) | 0x20000000);
 
         for (int r = 0; r < 3; r++)
@@ -173,7 +173,7 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
     }
 
     private int getFilterAccent() {
-        return switch (handler.getFilterMode()) {
+        return switch (menu.getFilterMode()) {
             case QuarryBlockEntity.FILTER_WHITELIST -> 0xFF44BB44;
             case QuarryBlockEntity.FILTER_BLACKLIST -> 0xFFBB4444;
             default -> 0xFF888888;
@@ -181,23 +181,16 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
     }
 
     @Override
-    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        renderBackground(ctx, mouseX, mouseY, delta);
-        super.render(ctx, mouseX, mouseY, delta);
-        drawMouseoverTooltip(ctx, mouseX, mouseY);
-    }
-
-    @Override
-    protected void drawForeground(DrawContext ctx, int mouseX, int mouseY) {
-        ctx.drawText(textRenderer, title, titleX, titleY, TXT, false);
-        ctx.drawText(textRenderer, playerInventoryTitle, playerInventoryTitleX, playerInventoryTitleY, TXT, false);
+    protected void extractLabels(GuiGraphicsExtractor ctx, int mouseX, int mouseY) {
+        ctx.text(font, title, titleLabelX, titleLabelY, TXT, false);
+        ctx.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, TXT, false);
 
         // Fuel display is drawn in drawBackground
     }
 
     // ── Drawing helpers ──
 
-    private void drawPanel(DrawContext ctx, int x, int y, int w, int h) {
+    private void drawPanel(GuiGraphicsExtractor ctx, int x, int y, int w, int h) {
         ctx.fill(x, y, x + w, y + h, BG);
         ctx.fill(x, y, x + w, y + 2, LIGHT);
         ctx.fill(x, y, x + 2, y + h, LIGHT);
@@ -205,7 +198,7 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
         ctx.fill(x, y + h - 2, x + w, y + h, DARK);
     }
 
-    private void drawSlot(DrawContext ctx, int x, int y) {
+    private void drawSlot(GuiGraphicsExtractor ctx, int x, int y) {
         ctx.fill(x, y, x + 18, y + 1, DARKER);
         ctx.fill(x, y, x + 1, y + 18, DARKER);
         ctx.fill(x + 17, y + 1, x + 18, y + 18, LIGHT);
@@ -213,7 +206,7 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
         ctx.fill(x + 1, y + 1, x + 17, y + 17, SLOT_BG);
     }
 
-    private void drawSep(DrawContext ctx, int x, int y, int w) {
+    private void drawSep(GuiGraphicsExtractor ctx, int x, int y, int w) {
         ctx.fill(x, y, x + w, y + 1, SEP);
         ctx.fill(x, y + 1, x + w, y + 2, LIGHT);
     }

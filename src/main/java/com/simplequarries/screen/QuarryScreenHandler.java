@@ -2,34 +2,32 @@ package com.simplequarries.screen;
 
 import com.simplequarries.SimpleQuarries;
 import com.simplequarries.block.entity.QuarryBlockEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.inventory.Inventory;
-import net.minecraft.inventory.SimpleInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.network.RegistryByteBuf;
-import net.minecraft.network.codec.PacketCodec;
-import net.minecraft.screen.ArrayPropertyDelegate;
-import net.minecraft.screen.PropertyDelegate;
-import net.minecraft.screen.ScreenHandler;
-import net.minecraft.screen.slot.Slot;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.world.Container;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ContainerData;
+import net.minecraft.world.inventory.SimpleContainerData;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * Screen handler for the Quarry GUI
  */
-public class QuarryScreenHandler extends ScreenHandler {
+public class QuarryScreenHandler extends AbstractContainerMenu {
     
-    private final Inventory inventory;
+    private final Container inventory;
     private final QuarryBlockEntity blockEntity;
-    private final PropertyDelegate propertyDelegate;
+    private final ContainerData propertyDelegate;
 
     /**
      * Data sent from server to client when opening the screen
      */
     public record QuarryScreenData(BlockPos pos) {
-        public static final PacketCodec<RegistryByteBuf, QuarryScreenData> PACKET_CODEC = PacketCodec.of(
+        public static final StreamCodec<RegistryFriendlyByteBuf, QuarryScreenData> PACKET_CODEC = StreamCodec.ofMember(
                 (data, buf) -> buf.writeBlockPos(data.pos),
                 buf -> new QuarryScreenData(buf.readBlockPos())
         );
@@ -38,22 +36,22 @@ public class QuarryScreenHandler extends ScreenHandler {
     /**
      * Client-side constructor
      */
-    public QuarryScreenHandler(int syncId, PlayerInventory playerInventory, QuarryScreenData data) {
-        this(syncId, playerInventory, getBlockEntity(playerInventory, data.pos()), new ArrayPropertyDelegate(6));
+    public QuarryScreenHandler(int syncId, Inventory playerInventory, QuarryScreenData data) {
+        this(syncId, playerInventory, getBlockEntity(playerInventory, data.pos()), new SimpleContainerData(6));
     }
 
     /**
      * Server-side constructor
      */
-    public QuarryScreenHandler(int syncId, PlayerInventory playerInventory, QuarryBlockEntity blockEntity, PropertyDelegate propertyDelegate) {
+    public QuarryScreenHandler(int syncId, Inventory playerInventory, QuarryBlockEntity blockEntity, ContainerData propertyDelegate) {
         super(SimpleQuarries.QUARRY_SCREEN_HANDLER, syncId);
         
         this.blockEntity = blockEntity;
         this.inventory = blockEntity;
         this.propertyDelegate = propertyDelegate;
 
-        checkSize(inventory, QuarryBlockEntity.INVENTORY_SIZE);
-        inventory.onOpen(playerInventory.player);
+        checkContainerSize(inventory, QuarryBlockEntity.INVENTORY_SIZE);
+        inventory.startOpen(playerInventory.player);
 
         // Slot 0: Pickaxe
         this.addSlot(new PickaxeSlot(blockEntity, QuarryBlockEntity.PICKAXE_SLOT, 10, 20));
@@ -99,11 +97,11 @@ public class QuarryScreenHandler extends ScreenHandler {
             this.addSlot(new Slot(playerInventory, col, 8 + col * 18, hotbarY));
         }
 
-        addProperties(propertyDelegate);
+        addDataSlots(propertyDelegate);
     }
 
-    private static QuarryBlockEntity getBlockEntity(PlayerInventory playerInventory, BlockPos pos) {
-        if (playerInventory.player.getEntityWorld().getBlockEntity(pos) instanceof QuarryBlockEntity quarry) {
+    private static QuarryBlockEntity getBlockEntity(Inventory playerInventory, BlockPos pos) {
+        if (playerInventory.player.level().getBlockEntity(pos) instanceof QuarryBlockEntity quarry) {
             return quarry;
         }
         throw new IllegalStateException("Quarry block entity not found at " + pos);
@@ -113,12 +111,12 @@ public class QuarryScreenHandler extends ScreenHandler {
     private static final int QUARRY_SLOT_COUNT = QuarryBlockEntity.INVENTORY_SIZE;
 
     @Override
-    public ItemStack quickMove(PlayerEntity player, int slotIndex) {
+    public ItemStack quickMoveStack(Player player, int slotIndex) {
         ItemStack newStack = ItemStack.EMPTY;
         Slot slot = this.slots.get(slotIndex);
 
-        if (slot != null && slot.hasStack()) {
-            ItemStack original = slot.getStack();
+        if (slot != null && slot.hasItem()) {
+            ItemStack original = slot.getItem();
             newStack = original.copy();
 
             int playerSlotStart = QUARRY_SLOT_COUNT;
@@ -126,17 +124,17 @@ public class QuarryScreenHandler extends ScreenHandler {
 
             if (slotIndex < QUARRY_SLOT_COUNT) {
                 // Moving from quarry to player inventory
-                if (!this.insertItem(original, playerSlotStart, playerSlotEnd, true)) {
+                if (!this.moveItemStackTo(original, playerSlotStart, playerSlotEnd, true)) {
                     return ItemStack.EMPTY;
                 }
             } else {
                 // Moving from player inventory to quarry
                 if (blockEntity.isValidPickaxe(original)) {
-                    if (!this.insertItem(original, 0, 1, false)) {
+                    if (!this.moveItemStackTo(original, 0, 1, false)) {
                         return ItemStack.EMPTY;
                     }
                 } else if (blockEntity.getFuelValue(original) > 0) {
-                    if (!this.insertItem(original, 1, 2, false)) {
+                    if (!this.moveItemStackTo(original, 1, 2, false)) {
                         return ItemStack.EMPTY;
                     }
                 } else {
@@ -145,9 +143,9 @@ public class QuarryScreenHandler extends ScreenHandler {
             }
 
             if (original.isEmpty()) {
-                slot.setStack(ItemStack.EMPTY);
+                slot.setByPlayer(ItemStack.EMPTY);
             } else {
-                slot.markDirty();
+                slot.setChanged();
             }
         }
 
@@ -155,21 +153,21 @@ public class QuarryScreenHandler extends ScreenHandler {
     }
 
     @Override
-    public boolean canUse(PlayerEntity player) {
-        return inventory.canPlayerUse(player);
+    public boolean stillValid(Player player) {
+        return inventory.stillValid(player);
     }
 
     @Override
-    public void onClosed(PlayerEntity player) {
-        super.onClosed(player);
-        inventory.onClose(player);
+    public void removed(Player player) {
+        super.removed(player);
+        inventory.stopOpen(player);
     }
 
     /**
      * Handle button clicks from the client (filter mode toggle, chunk loader toggle)
      */
     @Override
-    public boolean onButtonClick(PlayerEntity player, int id) {
+    public boolean clickMenuButton(Player player, int id) {
         if (id == 0) {
             // Cycle filter mode: disabled -> whitelist -> blacklist -> disabled
             blockEntity.cycleFilterMode();
@@ -227,15 +225,15 @@ public class QuarryScreenHandler extends ScreenHandler {
     }
 
     public boolean hasPickaxe() {
-        return !inventory.getStack(QuarryBlockEntity.PICKAXE_SLOT).isEmpty();
+        return !inventory.getItem(QuarryBlockEntity.PICKAXE_SLOT).isEmpty();
     }
 
     public boolean hasFuel() {
-        return !inventory.getStack(QuarryBlockEntity.FUEL_SLOT).isEmpty();
+        return !inventory.getItem(QuarryBlockEntity.FUEL_SLOT).isEmpty();
     }
 
     public boolean hasValidFuel() {
-        ItemStack fuel = inventory.getStack(QuarryBlockEntity.FUEL_SLOT);
+        ItemStack fuel = inventory.getItem(QuarryBlockEntity.FUEL_SLOT);
         return !fuel.isEmpty() && blockEntity.getFuelValue(fuel) > 0;
     }
 
@@ -258,12 +256,12 @@ public class QuarryScreenHandler extends ScreenHandler {
         }
 
         @Override
-        public boolean canInsert(ItemStack stack) {
+        public boolean mayPlace(ItemStack stack) {
             return quarry.isValidPickaxe(stack);
         }
 
         @Override
-        public int getMaxItemCount() {
+        public int getMaxStackSize() {
             return 1;
         }
     }
@@ -277,18 +275,18 @@ public class QuarryScreenHandler extends ScreenHandler {
         }
 
         @Override
-        public boolean canInsert(ItemStack stack) {
+        public boolean mayPlace(ItemStack stack) {
             return quarry.getFuelValue(stack) > 0;
         }
     }
 
     private static class OutputSlot extends Slot {
-        OutputSlot(Inventory inventory, int index, int x, int y) {
+        OutputSlot(Container inventory, int index, int x, int y) {
             super(inventory, index, x, y);
         }
 
         @Override
-        public boolean canInsert(ItemStack stack) {
+        public boolean mayPlace(ItemStack stack) {
             return false;
         }
     }
@@ -297,17 +295,17 @@ public class QuarryScreenHandler extends ScreenHandler {
      * Filter slot - accepts any item as a reference for filtering
      */
     private static class FilterSlot extends Slot {
-        FilterSlot(Inventory inventory, int index, int x, int y) {
+        FilterSlot(Container inventory, int index, int x, int y) {
             super(inventory, index, x, y);
         }
 
         @Override
-        public boolean canInsert(ItemStack stack) {
+        public boolean mayPlace(ItemStack stack) {
             return true; // Accept any item as filter reference
         }
 
         @Override
-        public int getMaxItemCount() {
+        public int getMaxStackSize() {
             return 1; // Only need one item as reference
         }
     }

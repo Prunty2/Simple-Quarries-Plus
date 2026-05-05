@@ -1,6 +1,6 @@
 package com.simplequarries;
 
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.Mth;
 
 public final class QuarryUpgrades {
     private QuarryUpgrades() {}
@@ -23,11 +23,11 @@ public final class QuarryUpgrades {
     };
 
     public static int clampUpgradeCount(int value) {
-        return MathHelper.clamp(value, 0, MAX_AREA_UPGRADES);
+        return Mth.clamp(value, 0, MAX_AREA_UPGRADES);
     }
 
     public static int clampSpeedCount(int value) {
-        return MathHelper.clamp(value, 0, MAX_SPEED_UPGRADES);
+        return Mth.clamp(value, 0, MAX_SPEED_UPGRADES);
     }
 
     public static int areaForCount(int upgradeCount) {

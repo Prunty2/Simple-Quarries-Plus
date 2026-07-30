@@ -2,12 +2,14 @@ package com.simplequarries.block.entity;
 
 import com.simplequarries.QuarryUpgrades;
 import com.simplequarries.SimpleQuarries;
+import com.simplequarries.component.QuarryComponents;
 import com.simplequarries.screen.QuarryScreenHandler;
 import net.fabricmc.fabric.api.menu.v1.ExtendedMenuProvider;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -160,6 +162,13 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedMenuProvid
 
     public QuarryBlockEntity(BlockPos pos, BlockState state) {
         super(SimpleQuarries.QUARRY_BLOCK_ENTITY, pos, state);
+    }
+
+    @Override
+    protected void collectImplicitComponents(DataComponentMap.Builder builder) {
+        super.collectImplicitComponents(builder);
+        builder.set(QuarryComponents.UPGRADE_COUNT, upgradeCount);
+        builder.set(QuarryComponents.SPEED_UPGRADE_COUNT, speedUpgradeCount);
     }
 
     /**

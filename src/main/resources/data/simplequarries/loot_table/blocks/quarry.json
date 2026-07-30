@@ -9,10 +9,11 @@
           "name": "simplequarries:quarry",
           "functions": [
             {
-              "function": "minecraft:copy_nbt",
+              "function": "minecraft:copy_components",
               "source": "block_entity",
-              "ops": [
-                { "source": "UpgradeCount", "target": "BlockEntityTag.UpgradeCount", "op": "replace" }
+              "include": [
+                "simplequarries:quarry_upgrade_count",
+                "simplequarries:quarry_speed_upgrade_count"
               ]
             }
           ] 

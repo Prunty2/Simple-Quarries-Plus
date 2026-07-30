@@ -6,10 +6,18 @@
     "CCC"
   ],
   "key": {
-    "#": "minecraft:redstone",
-    "I": "minecraft:iron_block",
-    "D": "minecraft:diamond_pickaxe",
-    "C": "minecraft:cobblestone"
+    "#": {
+      "item": "minecraft:redstone"
+    },
+    "I": {
+      "item": "minecraft:iron_block"
+    },
+    "D": {
+      "item": "minecraft:diamond_pickaxe"
+    },
+    "C": {
+      "item": "minecraft:cobblestone"
+    }
   },
   "result": {
     "id": "simplequarries:quarry",

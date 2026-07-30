@@ -71,3 +71,44 @@ publishing {
 		// Add repositories to publish to here.
 	}
 }
+
+tasks.register("validateModResources") {
+	group = "verification"
+	description = "Checks resource paths and the quarry recipe schema used by Minecraft 1.21+."
+
+	inputs.dir("src/main/resources")
+
+	doLast {
+		def resources = file("src/main/resources")
+		def requiredFiles = [
+			new File(resources, "data/simplequarries/recipe/quarry.json"),
+			new File(resources, "data/simplequarries/loot_table/blocks/quarry.json"),
+			new File(resources, "data/minecraft/tags/block/mineable/pickaxe.json")
+		]
+
+		requiredFiles.each { requiredFile ->
+			if (!requiredFile.isFile()) {
+				throw new GradleException("Missing required mod resource: ${requiredFile}")
+			}
+		}
+
+		def legacyResources = fileTree(resources) {
+			include "data/**/loot_tables/**"
+			include "data/**/tags/blocks/**"
+		}.files
+		if (!legacyResources.isEmpty()) {
+			throw new GradleException("Minecraft 1.21+ resource paths must be singular: ${legacyResources}")
+		}
+
+		def recipe = new groovy.json.JsonSlurper().parse(requiredFiles[0])
+		recipe.key.each { symbol, ingredient ->
+			if (!(ingredient instanceof String)) {
+				throw new GradleException(
+					"Recipe ingredient '${symbol}' must use the Minecraft 1.21.9+ identifier format"
+				)
+			}
+		}
+	}
+}
+
+check.dependsOn tasks.named("validateModResources")

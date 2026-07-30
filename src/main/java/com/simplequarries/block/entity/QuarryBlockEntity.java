@@ -2,6 +2,7 @@ package com.simplequarries.block.entity;
 
 import com.simplequarries.QuarryUpgrades;
 import com.simplequarries.SimpleQuarries;
+import com.simplequarries.component.QuarryComponents;
 import com.simplequarries.screen.QuarryScreenHandler;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
 import net.minecraft.block.Block;
@@ -14,6 +15,7 @@ import net.minecraft.inventory.Inventory;
 import net.minecraft.inventory.SidedInventory;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.component.type.ItemEnchantmentsComponent;
+import net.minecraft.component.ComponentMap;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -144,6 +146,12 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
 
     public QuarryBlockEntity(BlockPos pos, BlockState state) {
         super(SimpleQuarries.QUARRY_BLOCK_ENTITY, pos, state);
+    }
+
+    @Override
+    protected void addComponents(ComponentMap.Builder builder) {
+        super.addComponents(builder);
+        builder.add(QuarryComponents.UPGRADE_COUNT, upgradeCount);
     }
 
     /**

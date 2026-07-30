@@ -34,6 +34,14 @@ A feature-rich Fabric quarry mod for Minecraft 1.21.9/1.21.10 that automates ver
 
 ### Quarry Crafting
 
+Arrange the ingredients in a crafting table as follows:
+
+```text
+Redstone       Redstone        Redstone
+Iron Block     Diamond Pickaxe Iron Block
+Cobblestone    Cobblestone     Cobblestone
+```
+
 ### Mining Mechanics
 - The quarry mines in a **square area** centered on itself, going straight down
 - **Mining speed** depends on pickaxe type:
@@ -88,6 +96,5 @@ Here's how many blocks different fuels can mine:
 - Keep the quarry **chunk-loaded** for continuous operation while you're away
 - Upgrade to 15×15 for maximum efficiency - it mines 9x more blocks per layer than the base quarry
 - Clear lava pools above the quarry area if you don't want fluids in your shaft
-
 
 

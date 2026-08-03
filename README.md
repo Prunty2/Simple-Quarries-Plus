@@ -1,6 +1,6 @@
 # ⛏️ Simple Quarries Plus 
 
-A feature-rich Fabric quarry mod for Minecraft 1.21.9/1.21.10 that automates vertical mining using fuel and pickaxes. Mine entire shafts automatically with configurable area sizes and full Fortune/Silk Touch support.
+A feature-rich Fabric quarry mod for Minecraft 26.2 that automates vertical mining using fuel and pickaxes. Mine entire shafts automatically with configurable area sizes and full Fortune/Silk Touch support.
 
 ## ✨ Features
 
@@ -96,5 +96,4 @@ Here's how many blocks different fuels can mine:
 - Keep the quarry **chunk-loaded** for continuous operation while you're away
 - Upgrade to 15×15 for maximum efficiency - it mines 9x more blocks per layer than the base quarry
 - Clear lava pools above the quarry area if you don't want fluids in your shaft
-
 

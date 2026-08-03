@@ -2,22 +2,20 @@ package com.simplequarries.item;
 
 import com.simplequarries.QuarryUpgrades;
 import com.simplequarries.component.QuarryComponents;
-import net.minecraft.block.Block;
-import net.minecraft.item.BlockItem;
-import net.minecraft.item.Item;
-import net.minecraft.component.type.TooltipDisplayComponent;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.NbtComponent;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-
 import java.util.function.Consumer;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.level.block.Block;
 
 public class QuarryBlockItem extends BlockItem {
-    public QuarryBlockItem(Block block, Settings settings) {
+    public QuarryBlockItem(Block block, Properties settings) {
         super(block, settings);
     }
 
@@ -27,9 +25,9 @@ public class QuarryBlockItem extends BlockItem {
             return QuarryUpgrades.clampUpgradeCount(fromComponent);
         }
         // Fallback for stacks that only carry BlockEntityTag (e.g., drops)
-        var blockEntityData = stack.get(DataComponentTypes.BLOCK_ENTITY_DATA);
+        var blockEntityData = stack.get(DataComponents.BLOCK_ENTITY_DATA);
         if (blockEntityData != null) {
-            NbtCompound nbt = blockEntityData.copyNbtWithoutId();
+            CompoundTag nbt = blockEntityData.copyTagWithoutId();
             int fromTag = nbt.getInt("UpgradeCount").orElse(0);
             if (fromTag > 0) {
                 return QuarryUpgrades.clampUpgradeCount(fromTag);
@@ -49,9 +47,9 @@ public class QuarryBlockItem extends BlockItem {
             return QuarryUpgrades.clampSpeedCount(fromComponent);
         }
         // Fallback for stacks that only carry BlockEntityTag (e.g., drops)
-        var blockEntityData = stack.get(DataComponentTypes.BLOCK_ENTITY_DATA);
+        var blockEntityData = stack.get(DataComponents.BLOCK_ENTITY_DATA);
         if (blockEntityData != null) {
-            NbtCompound nbt = blockEntityData.copyNbtWithoutId();
+            CompoundTag nbt = blockEntityData.copyTagWithoutId();
             int fromTag = nbt.getInt("SpeedUpgradeCount").orElse(0);
             if (fromTag > 0) {
                 return QuarryUpgrades.clampSpeedCount(fromTag);
@@ -70,30 +68,30 @@ public class QuarryBlockItem extends BlockItem {
     }
 
     @Override
-    public void appendTooltip(ItemStack stack, Item.TooltipContext context, TooltipDisplayComponent display, Consumer<Text> textConsumer, TooltipType type) {
-        super.appendTooltip(stack, context, display, textConsumer, type);
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> textConsumer, TooltipFlag type) {
+        super.appendHoverText(stack, context, display, textConsumer, type);
         
         // Area upgrades
         int area = getMiningArea(stack);
         boolean areaAtMax = area >= QuarryUpgrades.MAX_AREA;
         if (areaAtMax) {
-            textConsumer.accept(Text.empty()
-                .append(Text.literal("Mining Area: ").formatted(Formatting.GRAY))
-                .append(Text.literal(area + "x" + area).formatted(Formatting.GREEN))
-                .append(Text.literal(" (Max)").formatted(Formatting.GOLD)));
+            textConsumer.accept(Component.empty()
+                .append(Component.literal("Mining Area: ").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(area + "x" + area).withStyle(ChatFormatting.GREEN))
+                .append(Component.literal(" (Max)").withStyle(ChatFormatting.GOLD)));
         } else {
-            textConsumer.accept(Text.empty()
-                .append(Text.literal("Mining Area: ").formatted(Formatting.GRAY))
-                .append(Text.literal(area + "x" + area).formatted(Formatting.GREEN)));
+            textConsumer.accept(Component.empty()
+                .append(Component.literal("Mining Area: ").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(area + "x" + area).withStyle(ChatFormatting.GREEN)));
         }
         
         // Speed upgrades (always show)
         int speed = getSpeedUpgradeCount(stack);
         int percentBoost = (int) Math.round((1.0 - QuarryUpgrades.speedMultiplierForCount(speed)) * 100);
         boolean speedAtMax = speed >= QuarryUpgrades.MAX_SPEED_UPGRADES;
-        textConsumer.accept(Text.empty()
-            .append(Text.literal("Speed: ").formatted(Formatting.GRAY))
-            .append(Text.literal("+" + percentBoost + "%").formatted(percentBoost > 0 ? Formatting.AQUA : Formatting.DARK_GRAY))
-            .append(speedAtMax ? Text.literal(" (Max)").formatted(Formatting.GOLD) : Text.empty()));
+        textConsumer.accept(Component.empty()
+            .append(Component.literal("Speed: ").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal("+" + percentBoost + "%").withStyle(percentBoost > 0 ? ChatFormatting.AQUA : ChatFormatting.DARK_GRAY))
+            .append(speedAtMax ? Component.literal(" (Max)").withStyle(ChatFormatting.GOLD) : Component.empty()));
     }
 }

@@ -1,38 +1,34 @@
 package com.simplequarries;
 
 import com.simplequarries.item.QuarryBlockItem;
-import net.minecraft.item.ItemStack;
-import net.minecraft.recipe.Ingredient;
-import net.minecraft.recipe.SpecialCraftingRecipe;
-import net.minecraft.recipe.RecipeSerializer;
-import net.minecraft.recipe.book.CraftingRecipeCategory;
-import net.minecraft.recipe.input.CraftingRecipeInput;
-import net.minecraft.registry.RegistryWrapper;
-import net.minecraft.util.collection.DefaultedList;
-import net.minecraft.world.World;
+import net.minecraft.core.NonNullList;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.item.crafting.CustomRecipe;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.level.Level;
 
-public class QuarrySpeedUpgradeRecipe extends SpecialCraftingRecipe {
-    public QuarrySpeedUpgradeRecipe(CraftingRecipeCategory category) {
-        super(category);
-    }
+public class QuarrySpeedUpgradeRecipe extends CustomRecipe {
+    public QuarrySpeedUpgradeRecipe() {}
 
     @Override
-    public boolean matches(CraftingRecipeInput inventory, World world) {
+    public boolean matches(CraftingInput inventory, Level world) {
         ItemStack quarryStack = ItemStack.EMPTY;
         int templateCount = 0;
 
         for (int i = 0; i < inventory.size(); i++) {
-            ItemStack stack = inventory.getStackInSlot(i);
+            ItemStack stack = inventory.getItem(i);
             if (stack.isEmpty()) {
                 continue;
             }
 
-            if (stack.isOf(SimpleQuarries.QUARRY_BLOCK_ITEM)) {
+            if (stack.is(SimpleQuarries.QUARRY_BLOCK_ITEM)) {
                 if (!quarryStack.isEmpty()) {
                     return false; // Multiple quarries present
                 }
                 quarryStack = stack;
-            } else if (stack.isOf(SimpleQuarries.QUARRY_SPEED_UPGRADE_TEMPLATE)) {
+            } else if (stack.is(SimpleQuarries.QUARRY_SPEED_UPGRADE_TEMPLATE)) {
                 templateCount++;
                 if (templateCount > 1) {
                     return false; // Only one template allowed
@@ -51,11 +47,11 @@ public class QuarrySpeedUpgradeRecipe extends SpecialCraftingRecipe {
     }
 
     @Override
-    public ItemStack craft(CraftingRecipeInput inventory, RegistryWrapper.WrapperLookup registries) {
+    public ItemStack assemble(CraftingInput inventory) {
         ItemStack quarryStack = ItemStack.EMPTY;
         for (int i = 0; i < inventory.size(); i++) {
-            ItemStack stack = inventory.getStackInSlot(i);
-            if (!stack.isEmpty() && stack.isOf(SimpleQuarries.QUARRY_BLOCK_ITEM)) {
+            ItemStack stack = inventory.getItem(i);
+            if (!stack.isEmpty() && stack.is(SimpleQuarries.QUARRY_BLOCK_ITEM)) {
                 quarryStack = stack;
                 break;
             }
@@ -82,19 +78,19 @@ public class QuarrySpeedUpgradeRecipe extends SpecialCraftingRecipe {
     }
 
     @Override
-    public RecipeSerializer<? extends SpecialCraftingRecipe> getSerializer() {
+    public RecipeSerializer<? extends CustomRecipe> getSerializer() {
         return SimpleQuarries.QUARRY_SPEED_UPGRADE_RECIPE_SERIALIZER;
     }
 
-    public DefaultedList<net.minecraft.recipe.Ingredient> getIngredients() {
-        DefaultedList<Ingredient> ingredients = DefaultedList.of();
-        ingredients.add(Ingredient.ofItems(SimpleQuarries.QUARRY_BLOCK_ITEM));
-        ingredients.add(Ingredient.ofItems(SimpleQuarries.QUARRY_SPEED_UPGRADE_TEMPLATE));
+    public NonNullList<net.minecraft.world.item.crafting.Ingredient> getIngredients() {
+        NonNullList<Ingredient> ingredients = NonNullList.create();
+        ingredients.add(Ingredient.of(SimpleQuarries.QUARRY_BLOCK_ITEM));
+        ingredients.add(Ingredient.of(SimpleQuarries.QUARRY_SPEED_UPGRADE_TEMPLATE));
         return ingredients;
     }
 
     @Override
-    public DefaultedList<ItemStack> getRecipeRemainders(CraftingRecipeInput input) {
-        return DefaultedList.ofSize(input.size(), ItemStack.EMPTY);
+    public NonNullList<ItemStack> getRemainingItems(CraftingInput input) {
+        return NonNullList.withSize(input.size(), ItemStack.EMPTY);
     }
 }

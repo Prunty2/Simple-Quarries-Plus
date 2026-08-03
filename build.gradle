@@ -1,5 +1,5 @@
 plugins {
-	id 'fabric-loom' version "${loom_version}"
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
 	id 'maven-publish'
 }
 
@@ -27,11 +27,10 @@ loom {
 
 dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
-	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }
 
 processResources {
@@ -43,13 +42,13 @@ processResources {
 }
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 21
+	it.options.release = 25
 }
 
 java {
 	withSourcesJar()
-	sourceCompatibility = JavaVersion.VERSION_21
-	targetCompatibility = JavaVersion.VERSION_21
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
 }
 
 jar {
@@ -74,7 +73,7 @@ publishing {
 
 tasks.register("validateModResources") {
 	group = "verification"
-	description = "Checks resource paths and the quarry recipe schema used by Minecraft 1.21+."
+	description = "Checks resource paths and the quarry recipe schema used by Minecraft 26.2."
 
 	inputs.dir("src/main/resources")
 
@@ -97,14 +96,14 @@ tasks.register("validateModResources") {
 			include "data/**/tags/blocks/**"
 		}.files
 		if (!legacyResources.isEmpty()) {
-			throw new GradleException("Minecraft 1.21+ resource paths must be singular: ${legacyResources}")
+			throw new GradleException("Minecraft 26.2 resource paths must be singular: ${legacyResources}")
 		}
 
 		def recipe = new groovy.json.JsonSlurper().parse(requiredFiles[0])
 		recipe.key.each { symbol, ingredient ->
 			if (!(ingredient instanceof String)) {
 				throw new GradleException(
-					"Recipe ingredient '${symbol}' must use the Minecraft 1.21.9+ identifier format"
+					"Recipe ingredient '${symbol}' must use the Minecraft 26.2 identifier format"
 				)
 			}
 		}
